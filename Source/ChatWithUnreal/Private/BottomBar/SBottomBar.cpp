@@ -1,28 +1,38 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SBottomBar.h"
-
-#include "SAbilitiesSelector.h"
 #include "SChatInput.h"
 #include "SChatSendButton.h"
+#include "SAttachmentList.h"
 #include "SInteractionModeSelector.h"
 #include "SToolModeSelector.h"
-#include "SAttachmentList.h"
-#include "DesktopPlatformModule.h"
-#include "IDesktopPlatform.h"
-#include "Misc/FileHelper.h"
-#include "HAL/PlatformApplicationMisc.h"
+#include "SAbilitiesSelector.h"
 #include "SQuotaBar.h"
-
+#include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SSpacer.h"
+#include "Widgets/Images/SImage.h"
+#include "Styling/AppStyle.h"
+#include "Misc/Base64.h"
+#include "Misc/FileHelper.h"
+#include "HAL/PlatformApplicationMisc.h"
+#include "DesktopPlatformModule.h"
+#include "IDesktopPlatform.h"
+
+#if PLATFORM_WINDOWS
+#include "FabWindowsClipboard.h"
+#endif
 
 void SBottomBar::Construct(const FArguments& InArgs)
 {
+	OnSendClickedEvent = InArgs._OnSendClicked;
+	OnInteractionModeChangedEvent = InArgs._OnInteractionModeChanged;
+	OnToolModeChangedEvent = InArgs._OnToolModeChanged;
+
 	ChildSlot
 	[
 		SNew(SVerticalBox)
 		
-				// 0. 附件列表
+		// 0. 附件列表
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.Padding(0.0f, 0.0f, 0.0f, 5.0f)
@@ -35,9 +45,24 @@ void SBottomBar::Construct(const FArguments& InArgs)
 				}
 			})
 			.OnAttachmentRemoved_Lambda([this](const FString& ImageId) {
-				if (ChatInput.IsValid())
+				if (ChatInput.IsValid() && AttachmentList.IsValid())
 				{
-					ChatInput->RemoveImageTag(ImageId);
+					// 根据 ID 找到它是列表中的第几个，从而在文本框中删除对应的 ◆
+					const auto& Items = AttachmentList->GetAttachmentItems();
+					int32 TargetIndex = INDEX_NONE;
+					for (int32 i = 0; i < Items.Num(); ++i)
+					{
+						if (Items[i].ImageId == ImageId)
+						{
+							TargetIndex = i;
+							break;
+						}
+					}
+
+					if (TargetIndex != INDEX_NONE)
+					{
+						ChatInput->RemoveImageTag(TargetIndex);
+					}
 				}
 			})
 		]
@@ -47,6 +72,19 @@ void SBottomBar::Construct(const FArguments& InArgs)
 		.AutoHeight()
 		[
 			SAssignNew(ChatInput, SChatInput)
+			.OnSendShortcutTriggered(FSimpleDelegate::CreateSP(this, &SBottomBar::OnChatInputSendRequested))
+			.OnPasteShortcutTriggered(FSimpleDelegate::CreateSP(this, &SBottomBar::OnPasteImageFromClipboard))
+			.OnFilesDropped(FOnFilesDropped::CreateSP(this, &SBottomBar::OnFilesDropped))
+			.OnImageTagErased_Lambda([this](int32 ErasedIndex) {
+				if (AttachmentList.IsValid())
+				{
+					const auto& Items = AttachmentList->GetAttachmentItems();
+					if (Items.IsValidIndex(ErasedIndex))
+					{
+						AttachmentList->RemoveAttachmentById(Items[ErasedIndex].ImageId);
+					}
+				}
+			})
 		]
 
 		// 2. 控制工具条 (原子控件拼装)
@@ -59,6 +97,7 @@ void SBottomBar::Construct(const FArguments& InArgs)
 			.AutoWidth()
 			[
 				SAssignNew(InteractionModeSelector, SInteractionModeSelector)
+				.OnInteractionModeChanged(this, &SBottomBar::OnInteractionModeChanged)
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
@@ -71,6 +110,8 @@ void SBottomBar::Construct(const FArguments& InArgs)
 			.Padding(5.0f, 0.0f, 0.0f, 0.0f)
 			[
 				SAssignNew(ToolModeSelector, SToolModeSelector)
+				.OnGetInteractionMode(this, &SBottomBar::GetInteractionMode)
+				.OnToolModeChanged(this, &SBottomBar::OnToolModeChanged)
 			]
 			+ SHorizontalBox::Slot()
 			.FillWidth(1.0f)
@@ -94,6 +135,7 @@ void SBottomBar::Construct(const FArguments& InArgs)
 			.AutoWidth()
 			[
 				SAssignNew(SendButton, SChatSendButton)
+				.OnSendClicked(FSimpleDelegate::CreateSP(this, &SBottomBar::OnChatInputSendRequested))
 			]
 		]
 
@@ -111,19 +153,44 @@ void SBottomBar::Construct(const FArguments& InArgs)
 
 void SBottomBar::OnInteractionModeChanged(const FString& NewMode)
 {
-}
-
-void SBottomBar::OnChatInputSendRequested()
-{
-}
-
-void SBottomBar::OnChatInputPasteImage(const TArray<uint8>& ImageData, int32 Width, int32 Height)
-{
+	if (ToolModeSelector.IsValid())
+	{
+		ToolModeSelector->SyncWithInteractionMode(NewMode);
+	}
+	OnInteractionModeChangedEvent.ExecuteIfBound(NewMode);
 }
 
 void SBottomBar::OnToolModeChanged(const FString& NewTool)
 {
+	OnToolModeChangedEvent.ExecuteIfBound(NewTool);
 }
+
+FString SBottomBar::GetInteractionMode() const
+{
+	return InteractionModeSelector.IsValid() ? InteractionModeSelector->GetCurrentMode() : TEXT("Chat");
+}
+
+void SBottomBar::OnChatInputSendRequested()
+{
+	OnSendClickedEvent.ExecuteIfBound();
+}
+
+void SBottomBar::OnPasteImageFromClipboard()
+{
+#if PLATFORM_WINDOWS
+	int32 Width, Height;
+	TArray<uint8> PendingImageData;
+	if (FFabWindowsClipboard::GetBitmapFromClipboard(PendingImageData, Width, Height))
+	{
+		FString Base64Str = FBase64::Encode(PendingImageData);
+		if (AttachmentList.IsValid())
+		{
+			AttachmentList->AddAttachment(Base64Str);
+		}
+	}
+#endif
+}
+
 FReply SBottomBar::OnAddAttachmentClicked()
 {
 	IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
@@ -157,4 +224,24 @@ FReply SBottomBar::OnAddAttachmentClicked()
 	}
 
 	return FReply::Handled();
+}
+
+void SBottomBar::OnFilesDropped(const TArray<FString>& Files)
+{
+	for (const FString& FilePath : Files)
+	{
+		FString Ext = FPaths::GetExtension(FilePath).ToLower();
+		if (Ext == TEXT("png") || Ext == TEXT("jpg") || Ext == TEXT("jpeg") || Ext == TEXT("bmp") || Ext == TEXT("wav") || Ext == TEXT("mp3"))
+		{
+			TArray<uint8> FileData;
+			if (FFileHelper::LoadFileToArray(FileData, *FilePath))
+			{
+				FString Base64Str = FBase64::Encode(FileData);
+				if (AttachmentList.IsValid())
+				{
+					AttachmentList->AddAttachment(Base64Str);
+				}
+			}
+		}
+	}
 }

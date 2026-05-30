@@ -2,7 +2,6 @@
 #include "SChatSendButton.h"
 #include "SChatInput.h"
 #include "SAttachmentList.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
 #include "Editor.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
@@ -13,6 +12,8 @@
 
 void SChatSendButton::Construct(const FArguments& InArgs)
 {
+	OnSendClicked = InArgs._OnSendClicked;
+	OnInterruptClicked = InArgs._OnInterruptClicked;
 
 	ChildSlot
 	[
@@ -53,14 +54,6 @@ void SChatSendButton::Construct(const FArguments& InArgs)
 			]
 		]
 	];
-
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			Subsystem->RegisterSendButton(SharedThis(this));
-		}
-	}
 }
 
 void SChatSendButton::SetIsRunning(bool bRunning)
@@ -71,57 +64,37 @@ void SChatSendButton::SetIsRunning(bool bRunning)
 
 bool SChatSendButton::IsRunning() const
 {
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			return Subsystem->IsGenerating();
-		}
-	}
 	return bIsRunning;
 }
 
 FReply SChatSendButton::HandleOnClicked()
 {
-	if (GEditor)
+	if (bIsRunning)
 	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
+		FDateTime Now = FDateTime::UtcNow();
+		if (!bInterruptConfirmArmed || Now > InterruptConfirmExpireAt)
 		{
-			if (Subsystem->IsGenerating())
-			{
-				FDateTime Now = FDateTime::UtcNow();
-				if (!bInterruptConfirmArmed || Now > InterruptConfirmExpireAt)
-				{
-					bInterruptConfirmArmed = true;
-					InterruptConfirmExpireAt = Now + FTimespan::FromSeconds(3.0);
-					return FReply::Handled();
-				}
-
-				// 中断逻辑：通过子系统停止
-				Subsystem->ReturnToUser();
-				return FReply::Handled();
-			}
-
-			bInterruptConfirmArmed = false;
-			Subsystem->ExecuteSendMessage();
+			bInterruptConfirmArmed = true;
+			InterruptConfirmExpireAt = Now + FTimespan::FromSeconds(3.0);
+			return FReply::Handled();
 		}
+
+		// 中断逻辑：执行绑定的外部中断处理委托
+		OnInterruptClicked.ExecuteIfBound();
+		return FReply::Handled();
 	}
+
+	bInterruptConfirmArmed = false;
+	
+	// 发送逻辑：执行绑定的外部发送委托
+	OnSendClicked.ExecuteIfBound();
 
 	return FReply::Handled();
 }
 
 FText SChatSendButton::GetButtonText() const
 {
-	bool bRunning = false;
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			bRunning = Subsystem->IsGenerating();
-		}
-	}
-
-	if (bRunning)
+	if (bIsRunning)
 	{
 		if (bInterruptConfirmArmed && FDateTime::UtcNow() <= InterruptConfirmExpireAt)
 		{
@@ -134,16 +107,7 @@ FText SChatSendButton::GetButtonText() const
 
 FSlateColor SChatSendButton::GetButtonBackgroundColor() const
 {
-	bool bRunning = false;
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			bRunning = Subsystem->IsGenerating();
-		}
-	}
-
-	if (bRunning)
+	if (bIsRunning)
 	{
 		if (bInterruptConfirmArmed && FDateTime::UtcNow() <= InterruptConfirmExpireAt)
 		{

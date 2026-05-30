@@ -1,23 +1,20 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
-#include "SAvatar.h"
+#include "TopBar/SChatAvatar.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SComboButton.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SBorder.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
-#include "Styling/AppStyle.h"
-#include "FabServer/UmgMcpStyle.h"
-#include "Styling/StyleColors.h"
+#include "ChatWithUnrealStyle.h"
 
 void SAvatar::Construct(const FArguments& InArgs)
 {
-	SourceBrush = FUmgMcpStyle::Get().GetBrush("UmgMcp.ChatAvatar");
-
 	ChildSlot
 	[
 		SAssignNew(ComboButton, SComboButton)
-		.ButtonStyle(FAppStyle::Get(), "SimpleButton")
 		.HasDownArrow(false)
+		.ButtonStyle(FAppStyle::Get(), "NoBorder")
 		.ContentPadding(0.0f)
 		.OnGetMenuContent(this, &SAvatar::OnGetMenuContent)
 		.ButtonContent()
@@ -27,20 +24,20 @@ void SAvatar::Construct(const FArguments& InArgs)
 			.HeightOverride(AvatarSize)
 			[
 				SNew(SImage)
-				.Image(this, &SAvatar::GetRoundedAvatarBrush)
+				.Image(this, &SAvatar::GetAvatarBrush)
 			]
 		]
 	];
 }
 
-
-const FSlateBrush* SAvatar::GetRoundedAvatarBrush() const
+const FSlateBrush* SAvatar::GetSourceBrush() const
 {
-	const FSlateBrush* EffectiveSource = SourceBrush;
-	if (!EffectiveSource)
-	{
-		EffectiveSource = FAppStyle::Get().GetBrush("Icons.User");
-	}
+	return SourceBrush ? SourceBrush : FAppStyle::Get().GetBrush("Icons.User");
+}
+
+const FSlateBrush* SAvatar::GetAvatarBrush() const
+{
+	const FSlateBrush* EffectiveSource = GetSourceBrush();
 
 	if (!CachedRoundedAvatarBrush.IsValid())
 	{
@@ -55,4 +52,10 @@ const FSlateBrush* SAvatar::GetRoundedAvatarBrush() const
 	}
 
 	return CachedRoundedAvatarBrush.Get();
+}
+
+
+TOptional<FSlateRenderTransform> SAvatar::GetAvatarRenderTransform() const
+{
+	return FSlateRenderTransform(FVector2D(0.5f, 0.5f));
 }

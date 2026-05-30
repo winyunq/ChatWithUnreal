@@ -2,7 +2,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FabServer/ChatSystem/UmgMcpTaskSubsystem.h"
 #include "Widgets/SCompoundWidget.h"
 
 class CHATWITHUNREAL_API STaskBeginNode : public SCompoundWidget

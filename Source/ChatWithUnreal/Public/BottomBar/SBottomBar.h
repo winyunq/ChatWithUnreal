@@ -13,6 +13,9 @@ class SChatSendButton;
 class SQuotaBar;
 class SAttachmentList;
 
+DECLARE_DELEGATE_OneParam(FOnBottomBarInteractionModeChanged, const FString& /*NewMode*/);
+DECLARE_DELEGATE_OneParam(FOnBottomBarToolModeChanged, const FString& /*NewTool*/);
+
 /**
  * SBottomBar
  */
@@ -20,25 +23,32 @@ class CHATWITHUNREAL_API SBottomBar : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SBottomBar) {}
+		SLATE_EVENT(FSimpleDelegate, OnSendClicked)
+		SLATE_EVENT(FOnBottomBarInteractionModeChanged, OnInteractionModeChanged)
+		SLATE_EVENT(FOnBottomBarToolModeChanged, OnToolModeChanged)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
-	// 原子微控件 (Public 为指挥官提供直达访问)
+	// 原子微控件
 	TSharedPtr<SAbilitiesSelector> AbilitiesSelector;
 	TSharedPtr<SChatInput> ChatInput;
 	TSharedPtr<SInteractionModeSelector> InteractionModeSelector;
 	TSharedPtr<SToolModeSelector> ToolModeSelector;
 	TSharedPtr<SChatSendButton> SendButton;
-	TSharedPtr<class SAttachmentList> AttachmentList;
+	TSharedPtr<SAttachmentList> AttachmentList;
 	TSharedPtr<SQuotaBar> QuotaBar;
 
 private:
-	// 事件回调
 	void OnInteractionModeChanged(const FString& NewMode);
 	void OnToolModeChanged(const FString& NewTool);
-	FReply OnSendClicked();
+	FString GetInteractionMode() const;
 	void OnChatInputSendRequested();
-	void OnChatInputPasteImage(const TArray<uint8>& ImageData, int32 Width, int32 Height);
+	void OnPasteImageFromClipboard();
 	FReply OnAddAttachmentClicked();
+	void OnFilesDropped(const TArray<FString>& Files);
+
+	FSimpleDelegate OnSendClickedEvent;
+	FOnBottomBarInteractionModeChanged OnInteractionModeChangedEvent;
+	FOnBottomBarToolModeChanged OnToolModeChangedEvent;
 };

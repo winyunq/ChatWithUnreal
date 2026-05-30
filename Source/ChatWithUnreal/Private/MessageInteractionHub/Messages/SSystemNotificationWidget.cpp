@@ -6,8 +6,6 @@
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Editor.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
-#include "SMessageInteractionHub.h"
 
 void SSystemNotificationWidget::Construct(const FArguments& InArgs)
 {
@@ -38,27 +36,8 @@ void SSystemNotificationWidget::Construct(const FArguments& InArgs)
 
 FReply SSystemNotificationWidget::OnRetryClicked()
 {
-	// 信号回传前，先自我销毁
-	if (GEditor)
-	{
-		UActiveMessageSubsystem* ActiveSubsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>();
-		if (ActiveSubsystem)
-		{
-			TSharedPtr<SMessageInteractionHub> Hub = ActiveSubsystem->GetRegisteredHub();
-			if (Hub.IsValid())
-			{
-				// 从 Hub 的列表中物理移除当前这个失败消息
-				Hub->RemoveMessageWidget(SharedThis(this));
-			}
-		}
-	}
-
 	// 触发重试逻辑
 	OnRetryDelegate.ExecuteIfBound();
 
 	return FReply::Handled();
-}
-
-void SSystemNotificationWidget::HandleActiveStateChanged(const struct FUmgMcpActiveChatStateEvent& Event)
-{
 }

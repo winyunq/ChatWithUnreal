@@ -8,7 +8,6 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Styling/AppStyle.h"
 #include "Brushes/SlateDynamicImageBrush.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
 #include "Engine/Texture2D.h"
 #include "Editor.h"
 
@@ -21,14 +20,6 @@ void SAttachmentList::Construct(const FArguments& InArgs)
 	[
 		SAssignNew(ListContainer, SHorizontalBox)
 	];
-
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			Subsystem->RegisterAttachmentList(SharedThis(this));
-		}
-	}
 }
 
 TArray<FString> SAttachmentList::GetBase64Images() const
@@ -45,20 +36,14 @@ void SAttachmentList::ClearAttachments()
 {
 	for (auto& Item : AttachedImages)
 	{
-		if (Item.SlateBrush.IsValid())
+		if (Item.Brush.IsValid())
 		{
-			Item.SlateBrush->ReleaseResource();
+			Item.Brush->ReleaseResource();
 		}
 	}
 	AttachedImages.Empty();
 
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			Subsystem->ClearTextureCache();
-		}
-	}
+	OnClearTextureCacheEvent.ExecuteIfBound();
 
 	RefreshList();
 }
@@ -73,23 +58,18 @@ void SAttachmentList::AddAttachment(const FString& InBase64, const FString& InIm
 	}
 
 	UTexture2D* Texture = nullptr;
-	if (GEditor)
+	if (OnGetOrCreateDynamicTextureEvent.IsBound())
 	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			FString CacheKey = FString::Printf(TEXT("Attachment_%s"), *ImageId);
-			Texture = Subsystem->GetOrCreateDynamicTexture(InBase64, CacheKey);
-		}
+		FString CacheKey = FString::Printf(TEXT("Attachment_%s"), *ImageId);
+		Texture = OnGetOrCreateDynamicTextureEvent.Execute(InBase64, CacheKey);
 	}
 
 	TSharedPtr<FSlateDynamicImageBrush> Brush = nullptr;
 	if (Texture)
 	{
-		float W = Texture->GetSizeX();
-		float H = Texture->GetSizeY();
+		float W = (float)Texture->GetSizeX();
+		float H = (float)Texture->GetSizeY();
 
-		// 自然对数缩放核心算法：
-		// Scale = 1.0 + ln(MinEdge / BaseSize)
 		float BaseSize = 64.0f;
 		float MinEdge = FMath::Min(W, H);
 		float Scale = 1.0f;
@@ -98,7 +78,7 @@ void SAttachmentList::AddAttachment(const FString& InBase64, const FString& InIm
 			Scale = 1.0f + FMath::Loge(MinEdge / BaseSize);
 		}
 		float TargetMinEdge = BaseSize * Scale;
-		TargetMinEdge = FMath::Clamp(TargetMinEdge, BaseSize, 120.0f); // 缩略图最小边约束在 64-120px 之间
+		TargetMinEdge = FMath::Clamp(TargetMinEdge, BaseSize, 120.0f);
 
 		float AspectRatio = W / H;
 		FVector2D TargetSize;
@@ -113,7 +93,7 @@ void SAttachmentList::AddAttachment(const FString& InBase64, const FString& InIm
 			TargetSize.X = TargetMinEdge * AspectRatio;
 		}
 
-		Brush = MakeShareable(new FSlateDynamicImageBrush(Texture, TargetSize, NAME_None));
+		Brush = MakeShared<FSlateDynamicImageBrush>(Texture, TargetSize, NAME_None);
 	}
 
 	AttachedImages.Add({ ImageId, InBase64, Brush });
@@ -128,9 +108,9 @@ void SAttachmentList::RemoveAttachmentById(const FString& InImageId)
 	{
 		if (AttachedImages[i].ImageId == InImageId)
 		{
-			if (AttachedImages[i].SlateBrush.IsValid())
+			if (AttachedImages[i].Brush.IsValid())
 			{
-				AttachedImages[i].SlateBrush->ReleaseResource();
+				AttachedImages[i].Brush->ReleaseResource();
 			}
 			OnAttachmentRemovedEvent.ExecuteIfBound(InImageId);
 			AttachedImages.RemoveAt(i);
@@ -149,15 +129,15 @@ void SAttachmentList::RefreshList()
 		const auto& Item = AttachedImages[i];
 
 		TSharedRef<SWidget> ImageWidget = SNew(SImage)
-			.Image(FAppStyle::Get().GetBrush("Icons.Image")); // 默认占位
+			.Image(FAppStyle::Get().GetBrush("Icons.Image"));
 
 		FVector2D BoxSize(64.0f, 64.0f);
 
-		if (Item.SlateBrush.IsValid())
+		if (Item.Brush.IsValid())
 		{
 			ImageWidget = SNew(SImage)
-				.Image(Item.SlateBrush.Get());
-			BoxSize = Item.SlateBrush->ImageSize;
+				.Image(Item.Brush.Get());
+			BoxSize = Item.Brush->ImageSize;
 		}
 
 		ListContainer->AddSlot()
@@ -171,7 +151,6 @@ void SAttachmentList::RefreshList()
 			[
 				SNew(SOverlay)
 				
-				// 1. 缩略图片本体 (带圆角边框包围)
 				+ SOverlay::Slot()
 				[
 					SNew(SBorder)
@@ -183,13 +162,12 @@ void SAttachmentList::RefreshList()
 					]
 				]
 
-				// 2. 底部半透明遮罩与图片编号显示 (炫酷的 [imageN] 标签)
 				+ SOverlay::Slot()
 				.VAlign(VAlign_Bottom)
 				[
 					SNew(SBorder)
 					.BorderImage(FAppStyle::GetBrush("WhiteBrush"))
-					.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.6f)) // 60% 科技黑半透明
+					.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.6f))
 					.Padding(FMargin(2.0f, 1.0f))
 					.HAlign(HAlign_Center)
 					[
@@ -200,7 +178,6 @@ void SAttachmentList::RefreshList()
 					]
 				]
 
-				// 3. 右上角红色联动删除按钮
 				+ SOverlay::Slot()
 				.HAlign(HAlign_Right)
 				.VAlign(VAlign_Top)
@@ -209,7 +186,6 @@ void SAttachmentList::RefreshList()
 					.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
 					.ContentPadding(0.0f)
 					.OnClicked_Lambda([this, Item]() {
-						// 本地项删除，自动触发 OnAttachmentRemovedEvent 委托通知
 						this->RemoveAttachmentById(Item.ImageId);
 						return FReply::Handled();
 					})

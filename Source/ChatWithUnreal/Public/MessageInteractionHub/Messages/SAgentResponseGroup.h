@@ -18,6 +18,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	
 	// 设置状态区内容
 	void SetAgentStatus(const FText& StatusText, bool bShowSpinner, const FLinearColor& StatusColor = FLinearColor::White);
 	// 设置名字内容
@@ -30,6 +31,14 @@ public:
 	FString GetMessageText() const { return MessageText; }
 	void ClearMessages();
 
+	/** 将一个复杂的工具请求组控件（如 SMcpApprovalQueue）添加到消息气泡中 */
+	void AddToolExecutionWidget(TSharedRef<SWidget> ToolWidget);
+	void RemoveWidget(TSharedRef<SWidget> WidgetToRemove);
+
+	void AddTextOutputBlock(const FString& NewText);
+	void AppendToCurrentTextOutputBlock(const FString& PartialText);
+	void AddToolExecutionBlock(const FString& ToolName, const FText& Status, bool bIsError);
+
 private:
 	FString AgentName;
 	FString MessageText;
@@ -39,14 +48,4 @@ private:
 
 	// pointer to the latest active text block to append text directly
 	TSharedPtr<class SRichTextBlock> ActiveTextBlock;
-
-	TArray<TTuple<FString, FText, bool>> ToolExecutionBlocks; // ToolName, Status, IsError
-public:
-	/** 将一个复杂的工具请求组控件（如 SMcpApprovalQueue）添加到消息气泡中 */
-	void AddToolExecutionWidget(TSharedRef<SWidget> ToolWidget);
-	void RemoveWidget(TSharedRef<SWidget> WidgetToRemove);
-
-	void AddTextOutputBlock(const FString& NewText);
-	void AppendToCurrentTextOutputBlock(const FString& PartialText);
-	void AddToolExecutionBlock(const FString& ToolName, const FText& Status, bool bIsError);
 };

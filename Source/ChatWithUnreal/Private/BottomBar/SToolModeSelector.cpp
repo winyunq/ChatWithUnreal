@@ -4,12 +4,10 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Styling/AppStyle.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
 #include "Editor.h"
 #include "Interfaces/IPluginManager.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
-#include "FabServer/UmgMcpSettings.h"
 
 SToolModeSelector::~SToolModeSelector()
 {
@@ -19,9 +17,13 @@ SToolModeSelector::~SToolModeSelector()
 void SToolModeSelector::Construct(const FArguments& InArgs)
 {
 	CurrentTool = TEXT("ALL");
+	OnGetInteractionModeEvent = InArgs._OnGetInteractionMode;
+	OnToolModeChangedEvent = InArgs._OnToolModeChanged;
 
 	// 使用全局静态寻址（物理追溯理论），确保在任何目录下都能找到 Resources
-	const FString& BaseDir = USettings::PluginBaseDir;
+	TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("UmgMcp"));
+	FString BaseDir = Plugin.IsValid() ? Plugin->GetBaseDir() : TEXT("");
+	
 	if (!BaseDir.IsEmpty())
 	{
 		FString ToolModesDir = FPaths::Combine(BaseDir, TEXT("Resources"), TEXT("ToolModes"));
@@ -89,12 +91,9 @@ FText SToolModeSelector::GetToolDisplayTextAttr() const
 
 EVisibility SToolModeSelector::GetVisibilityBasedOnMode() const
 {
-	if (GEditor)
+	if (OnGetInteractionModeEvent.IsBound())
 	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			return Subsystem->GetInteractionMode() == TEXT("Develop") ? EVisibility::Visible : EVisibility::Collapsed;
-		}
+		return OnGetInteractionModeEvent.Execute() == TEXT("Develop") ? EVisibility::Visible : EVisibility::Collapsed;
 	}
 	return EVisibility::Collapsed;
 }
@@ -130,5 +129,7 @@ void SToolModeSelector::OnSelectionChanged(TSharedPtr<FString> NewValue, ESelect
 		CurrentTool = *NewValue;
 		GConfig->SetString(TEXT("UmgMcp.UIState"), TEXT("LastSelectedToolMode"), *CurrentTool, GEditorPerProjectIni);
 		GConfig->Flush(false, GEditorPerProjectIni);
+
+		OnToolModeChangedEvent.ExecuteIfBound(CurrentTool);
 	}
 }

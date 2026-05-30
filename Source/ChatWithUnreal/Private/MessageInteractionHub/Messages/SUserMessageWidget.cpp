@@ -11,11 +11,9 @@
 #include "Styling/AppStyle.h"
 #include "HAL/PlatformApplicationMisc.h"
 #include "Brushes/SlateDynamicImageBrush.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
 #include "Engine/Texture2D.h"
 #include "Editor.h"
-
-#include "FabServer/Authentication/UmgMcpAuthenticationSubsystem.h"
+#include "ImageUtils.h"
 
 namespace
 {
@@ -45,20 +43,6 @@ void SUserMessageWidget::Construct(const FArguments& InArgs)
 	Base64Images = InArgs._Base64Images;
 
 	FString DisplayName = TEXT("User");
-	if (GEditor)
-	{
-		if (UAuthenticationSubsystem* AuthSys = GEditor->GetEditorSubsystem<UAuthenticationSubsystem>())
-		{
-			if (AuthSys->IsAnyAccountLoggedIn())
-			{
-				DisplayName = AuthSys->GetActiveUserDisplayName();
-			}
-			else
-			{
-				DisplayName = AuthSys->GetLocalUserDisplayName();
-			}
-		}
-	}
 
 	TSharedPtr<SVerticalBox> BubbleContentBox = SNew(SVerticalBox);
 
@@ -126,13 +110,19 @@ void SUserMessageWidget::Construct(const FArguments& InArgs)
 		{
 			const FString& Base64Str = Base64Images[ImageIndex];
 			UTexture2D* Texture = nullptr;
-			if (GEditor)
+			
+			// 纯前端本地导入 Base64 为 UTexture2D 预览气泡，不经过后端 Cache Subsystem 强耦合
+			FString CleanBase64 = Base64Str;
+			int32 CommaIdx = -1;
+			if (CleanBase64.FindChar(TEXT(','), CommaIdx))
 			{
-				if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-				{
-					FString CacheKey = FString::Printf(TEXT("Bubble_%p_%s"), this, *ImageId);
-					Texture = Subsystem->GetOrCreateDynamicTexture(Base64Str, CacheKey);
-				}
+				CleanBase64 = CleanBase64.RightChop(CommaIdx + 1);
+			}
+
+			TArray<uint8> DecodedBytes;
+			if (FBase64::Decode(CleanBase64, DecodedBytes))
+			{
+				Texture = FImageUtils::ImportBufferAsTexture2D(DecodedBytes);
 			}
 
 			if (Texture)

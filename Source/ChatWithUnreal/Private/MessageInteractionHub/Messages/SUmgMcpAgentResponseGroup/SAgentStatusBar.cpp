@@ -1,5 +1,5 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
-#include "Messages/SAgentResponseGroup/SAgentStatusBar.h"
+#include "SAgentStatusBar.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Images/SThrobber.h"
 #include "Widgets/Text/STextBlock.h"

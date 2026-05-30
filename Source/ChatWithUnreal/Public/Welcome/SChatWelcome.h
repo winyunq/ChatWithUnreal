@@ -2,28 +2,36 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "FabServer/AIProviders/Zhipu/UmgMcpZhipuConversationHistory.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
-DECLARE_DELEGATE_OneParam(FOnUmgMcpSessionSelected, const FString&);
+DECLARE_DELEGATE_OneParam(FOnChatWelcomeSessionSelected, const FString& /*SessionId*/);
+DECLARE_DELEGATE_OneParam(FOnChatWelcomeSessionDeleted, const FString& /*SessionId*/);
 
-// SChatWelcome：欢迎页，显示历史列表。
+/**
+ * SChatWelcome：欢迎页，显示引导信息和历史列表。
+ */
 class CHATWITHUNREAL_API SChatWelcome : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SChatWelcome) {}
-		SLATE_EVENT(FOnUmgMcpSessionSelected, OnSessionSelected)
+		SLATE_EVENT(FOnChatWelcomeSessionSelected, OnSessionSelected)
+		SLATE_EVENT(FOnChatWelcomeSessionDeleted, OnSessionDeleted)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void RefreshHistoryList();
+
+	/** 协议接口：由后端调用，直接传入基础数据 */
+	void ClearHistoryList();
+	void AddHistoryItem(const FString& SessionId, const FString& Title, int32 MessageCount, const FDateTime& LastModified);
 
 private:
-	// 修复签名：返回 FReply 以匹配 SButton::OnClicked 预期，且统一样式
-	FReply OnSessionClicked(FString SessionId);
+	void OnHistoryItemSelected(const FString& SessionId);
+	void OnHistoryItemDeleted(const FString& SessionId);
 	EVisibility GetEmptyListVisibility() const;
 
-	FOnUmgMcpSessionSelected OnSessionSelected;
 	TSharedPtr<class SVerticalBox> HistoryListBox;
+
+	FOnChatWelcomeSessionSelected OnSessionSelectedEvent;
+	FOnChatWelcomeSessionDeleted OnSessionDeletedEvent;
 };

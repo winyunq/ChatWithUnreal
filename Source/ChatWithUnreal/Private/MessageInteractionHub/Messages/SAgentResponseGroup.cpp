@@ -1,5 +1,5 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
-#include "Messages/SAgentResponseGroup.h"
+#include "SAgentResponseGroup.h"
 #include "SAgentAvatar.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SBorder.h"
@@ -10,9 +10,8 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Images/SImage.h"
 #include "Styling/AppStyle.h"
-#include "Messages/SAgentResponseGroup/SAgentStatusBar.h"
+#include "SAgentStatusBar.h"
 #include "HAL/PlatformApplicationMisc.h"
-#include "FabServer/UmgMcpStyle.h"
 
 // Slate 文本框架头文件
 #include "Framework/Text/ITextDecorator.h"
@@ -336,7 +335,7 @@ void SAgentResponseGroup::AddTextOutputBlock(const FString& NewText)
 		ActiveTextBlock.Reset();
 
 		TArray<TSharedRef<class ITextDecorator>> Decorators;
-		Decorators.Add(FSimpleRichTextDecorator::Create(&FUmgMcpStyle::Get()));
+		Decorators.Add(FSimpleRichTextDecorator::Create(&FAppStyle::Get()));
 
 		TurnContentBox->AddSlot()
 		.AutoHeight()
@@ -345,8 +344,8 @@ void SAgentResponseGroup::AddTextOutputBlock(const FString& NewText)
 			// 使用 SBox 辅助 SRichTextBlock 确定换行边界
 			SAssignNew(ActiveTextBlock, SRichTextBlock)
 			.Text(FText::FromString(ConvertMarkdownToRichText(NewText)))
-			.TextStyle(&FUmgMcpStyle::Get().GetWidgetStyle<FTextBlockStyle>("default"))
-			.DecoratorStyleSet(&FUmgMcpStyle::Get())
+			.TextStyle(&FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
+			.DecoratorStyleSet(&FAppStyle::Get())
 			.Decorators(Decorators)
 			.AutoWrapText(true)
 			.WrapTextAt(0.0f) // 0.0f 表示让 SRichTextBlock 自动根据容器宽度换行

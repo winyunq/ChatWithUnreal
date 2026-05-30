@@ -1,6 +1,5 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SChatWindow.h"
-
 #include "SBottomBar.h"
 #include "SMessageInteractionHub.h"
 #include "STopBar.h"
@@ -11,13 +10,14 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 #include "Editor.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
-#include "FabServer/ChatSystem/UmgMcpSessionManagerSubsystem.h"
-#include "FabServer/AIProviders/UmgMcpAiSubsystem.h"
-#include "FabServer/AIProviders/Local/UmgMcpLiteRtLmAiProvider.h"
+
+SChatWindow::FOnChatWindowConstructed SChatWindow::OnConstructed;
 
 void SChatWindow::Construct(const FArguments& InArgs)
 {
+	OnShowHistoryEvent = InArgs._OnShowHistory;
+	OnNewConversationEvent = InArgs._OnNewConversation;
+
 	ChildSlot
 	[
 		SNew(SBorder)
@@ -45,6 +45,9 @@ void SChatWindow::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+
+	// 动态广播自身，供后端 Subsystem 在运行时动态捕获并进行逻辑绑定
+	OnConstructed.Broadcast(SharedThis(this));
 }
 
 SChatWindow::~SChatWindow()
@@ -53,55 +56,12 @@ SChatWindow::~SChatWindow()
 
 void SChatWindow::OnShowHistoryClicked()
 {
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			if (Subsystem->IsGenerating()) return;
-		}
-	}
-
-	if (MessageHubWidget.IsValid())
-	{
-		MessageHubWidget->ClearMessages();
-	}
-
-	if (GEditor)
-	{
-		if (USessionManagerSubsystem* SessionSubsystem = GEditor->GetEditorSubsystem<USessionManagerSubsystem>())
-		{
-			SessionSubsystem->ClearActiveSession();
-		}
-	}
+	OnShowHistoryEvent.ExecuteIfBound();
 }
 
 void SChatWindow::OnNewConversationClicked()
 {
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			if (Subsystem->IsGenerating()) return;
-		}
-	}
-
-	if (MessageHubWidget.IsValid())
-	{
-		MessageHubWidget->ClearMessages();
-	}
-
-	if (GEditor)
-	{
-		if (USessionManagerSubsystem* SessionSubsystem = GEditor->GetEditorSubsystem<USessionManagerSubsystem>())
-		{
-			SessionSubsystem->ClearActiveSession();
-		}
-
-		if (UActiveMessageSubsystem* ActiveSubsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			ActiveSubsystem->StartNewChatMessage();
-		}
-	}
+	OnNewConversationEvent.ExecuteIfBound();
 }
 
 void SChatWindow::OnWelcomeSessionSelected(const FString& SessionId)

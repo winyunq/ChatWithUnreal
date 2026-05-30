@@ -1,14 +1,13 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #pragma once
 
-#include "SAvatar.h"
+#include "TopBar/SChatAvatar.h"
 
 // AI 头像派生类：点击弹出 @提及 面板
 class CHATWITHUNREAL_API SAgentAvatar : public SAvatar
 {
 public:
-	SLATE_BEGIN_ARGS(SAgentAvatar)
-	{}
+	SLATE_BEGIN_ARGS(SAgentAvatar) {}
 		SLATE_ARGUMENT(FString, AgentName)
 	SLATE_END_ARGS()
 

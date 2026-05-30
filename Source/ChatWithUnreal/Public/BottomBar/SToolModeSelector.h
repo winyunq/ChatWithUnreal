@@ -5,11 +5,16 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
+DECLARE_DELEGATE_RetVal(FString, FOnGetToolSelectorInteractionMode);
+DECLARE_DELEGATE_OneParam(FOnToolModeChanged, const FString& /*NewTool*/);
+
 // 工具模式选择原子控件
 class CHATWITHUNREAL_API SToolModeSelector : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SToolModeSelector) {}
+		SLATE_EVENT(FOnGetToolSelectorInteractionMode, OnGetInteractionMode)
+		SLATE_EVENT(FOnToolModeChanged, OnToolModeChanged)
 	SLATE_END_ARGS()
 
 	virtual ~SToolModeSelector();
@@ -33,4 +38,6 @@ private:
 	FString CurrentTool;
 
 	TSharedPtr<class SComboBox<TSharedPtr<FString>>> ComboBox;
+	FOnGetToolSelectorInteractionMode OnGetInteractionModeEvent;
+	FOnToolModeChanged OnToolModeChangedEvent;
 };

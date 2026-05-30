@@ -1,20 +1,17 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 
 #include "ChatWithUnreal.h"
-#include "UmgMcp.h"
 #include "SChatWindow.h"
+#include "ChatWithUnrealStyle.h"
 
 void FChatWithUnrealModule::StartupModule()
 {
-	FUmgMcpModule::OnSpawnChatWindow.BindLambda([]()
-	{
-		return SNew(SChatWindow);
-	});
+	FChatWithUnrealStyle::Initialize();
 }
 
 void FChatWithUnrealModule::ShutdownModule()
 {
-	// Put shutdown logic here if needed
+	FChatWithUnrealStyle::Shutdown();
 }
 
 IMPLEMENT_MODULE(FChatWithUnrealModule, ChatWithUnreal)

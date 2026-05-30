@@ -7,22 +7,13 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
-#include "FabServer/UmgMcpSettings.h"
-#include "Editor.h"
-
 SAbilitiesSelector::~SAbilitiesSelector()
 {
-	// 析构时保存持久化数据 (目前只是占位演示，将来保存选中的能力列表)
-	if (USettings* Settings = GetMutableDefault<USettings>())
-	{
-		Settings->SaveConfig();
-	}
 }
 
 void SAbilitiesSelector::Construct(const FArguments& InArgs)
 {
-	// 加载持久化数据 (逻辑待完善)
+	OnGetInteractionMode = InArgs._OnGetInteractionMode;
 
 	ChildSlot
 	.VAlign(VAlign_Center)
@@ -58,12 +49,9 @@ FText SAbilitiesSelector::GetDisplayAlphaText() const
 
 EVisibility SAbilitiesSelector::GetVisibilityBasedOnMode() const
 {
-	if (GEditor)
+	if (OnGetInteractionMode.IsBound())
 	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			return Subsystem->GetInteractionMode() == TEXT("Task") ? EVisibility::Visible : EVisibility::Collapsed;
-		}
+		return OnGetInteractionMode.Execute() == TEXT("Task") ? EVisibility::Visible : EVisibility::Collapsed;
 	}
 	return EVisibility::Collapsed;
 }

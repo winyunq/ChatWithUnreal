@@ -6,18 +6,18 @@
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "Dom/JsonObject.h"
 
-class FUmgMcpAgent;
 class SMcpToolItem;
+
+DECLARE_DELEGATE_RetVal_ThreeParams(FString, FOnExecuteTool, const FString& /*ToolName*/, const FString& /*ArgumentsJson*/, FString& /*OutToolCallId*/);
+DECLARE_DELEGATE_OneParam(FOnMcpTaskFinished, const TArray<TSharedPtr<FJsonObject>>& /*Results*/);
 
 /**
  * SMcpApprovalQueue: MCP 审批队列控件。
- * 实现垂直列表、单步推进与按钮焦点滑动。
  */
 class CHATWITHUNREAL_API SMcpApprovalQueue : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SMcpApprovalQueue) {}
-		SLATE_ARGUMENT(TWeakPtr<FUmgMcpAgent>, WaitingAgent)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -30,6 +30,14 @@ public:
 
 	/** 判定队列是否为空（逻辑上是否有请求） */
 	bool IsQueueEmpty() const { return ToolItems.Num() == 0; }
+
+	/** 已收集的执行结果 */
+	TArray<TSharedPtr<FJsonObject>> GetCollectedResults() const { return CollectedResults; }
+
+public: // Made public for direct backend wiring
+	FOnExecuteTool OnExecuteTool;
+	FSimpleDelegate OnToolRejected;
+	FOnMcpTaskFinished OnMcpTaskFinished;
 
 private:
 	/** 当前焦点索引（待处理的第一个 Item） */
@@ -44,17 +52,9 @@ private:
 	/** 容器布局 */
 	TSharedPtr<class SVerticalBox> ListContainer;
 
-	/** 回调目标 */
-	TWeakPtr<FUmgMcpAgent> WaitingAgent;
-
 	// --- 交互执行节点 ---
-	/** 为当前焦点 Item 构造并显示按钮 */
 	void RenderActiveButtons();
-
-	/** 执行动作：调用后台 MCP 命令 */
 	FReply OnAcceptClicked();
 	FReply OnRejectClicked();
-
-	/** 单步推进：处理完一个后的逻辑切割 */
 	void AdvanceFocus();
 };

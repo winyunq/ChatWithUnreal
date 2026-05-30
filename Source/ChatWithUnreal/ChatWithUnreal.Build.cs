@@ -14,12 +14,26 @@ public class ChatWithUnreal : ModuleRules
 				ModuleDirectory + "/Public"
 			}
 		);
+		if (System.IO.Directory.Exists(ModuleDirectory + "/Public"))
+		{
+			foreach (string SubDir in System.IO.Directory.GetDirectories(ModuleDirectory + "/Public", "*", System.IO.SearchOption.AllDirectories))
+			{
+				PublicIncludePaths.Add(SubDir);
+			}
+		}
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
 				ModuleDirectory + "/Private"
 			}
 		);
+		if (System.IO.Directory.Exists(ModuleDirectory + "/Private"))
+		{
+			foreach (string SubDir in System.IO.Directory.GetDirectories(ModuleDirectory + "/Private", "*", System.IO.SearchOption.AllDirectories))
+			{
+				PrivateIncludePaths.Add(SubDir);
+			}
+		}
 		
 		PublicDependencyModuleNames.AddRange(
 			new string[]
@@ -34,8 +48,7 @@ public class ChatWithUnreal : ModuleRules
 				"Slate",
 				"SlateCore",
 				"UMG",
-				"UnrealEd",
-				"UmgMcp"
+				"UnrealEd"
 			}
 		);
 		

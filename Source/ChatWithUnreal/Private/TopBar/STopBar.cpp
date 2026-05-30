@@ -1,26 +1,18 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "STopBar.h"
-
 #include "SUserAvatar.h"
 #include "SEditableName.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
-#include "FabServer/Authentication/UmgMcpAuthenticationSubsystem.h"
-#include "Editor.h"
-#include "Styling/AppStyle.h"
-#include "Widgets/Images/SImage.h"
-#include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
-#include "Widgets/Layout/SBox.h"
-#include "Widgets/Layout/SSpacer.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SSpacer.h"
+#include "Styling/AppStyle.h"
 
 void STopBar::Construct(const FArguments& InArgs)
 {
 	OnNewConversationDelegate = InArgs._OnNewConversation;
 	OnShowHistoryDelegate = InArgs._OnShowHistory;
-
-	LocalUserName = TEXT("Guest");
-	bIsLoggedIn = false;
 
 	ChildSlot
 	[
@@ -40,9 +32,7 @@ void STopBar::Construct(const FArguments& InArgs)
 			.VAlign(VAlign_Center)
 			.Padding(10.0f, 0.0f, 0.0f, 0.0f)
 			[
-				SNew(SEditableName)
-				.UserName(this, &STopBar::GetLocalUserName)
-				.IsLoggedIn(this, &STopBar::GetIsLoggedIn)
+				SAssignNew(NameWidget, SEditableName)
 			]
 			+ SHorizontalBox::Slot()
 			.FillWidth(1.0f)
@@ -56,7 +46,6 @@ void STopBar::Construct(const FArguments& InArgs)
 				SNew(SButton)
 				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
 				.OnClicked(this, &STopBar::OnShowHistoryClicked)
-				.ToolTipText(this, &STopBar::GetHistoryToolTip)
 				[
 					SNew(SImage).Image(FAppStyle::Get().GetBrush("Icons.Layout"))
 				]
@@ -67,19 +56,24 @@ void STopBar::Construct(const FArguments& InArgs)
 				SNew(SButton)
 				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
 				.OnClicked(this, &STopBar::OnNewConversationClicked)
-				.ToolTipText(this, &STopBar::GetNewConvToolTip)
 				[
-						SNew(SImage).Image(FAppStyle::Get().GetBrush("Icons.Plus"))
-					
+					SNew(SImage).Image(FAppStyle::Get().GetBrush("Icons.Plus"))
 				]
 			]
 		]
 	];
 }
 
+void STopBar::SetUserMetadata(const FString& UserName, bool bIsLoggedIn)
+{
+	if (NameWidget.IsValid())
+	{
+		NameWidget->SetUserMetadata(UserName, bIsLoggedIn);
+	}
+}
+
 FReply STopBar::OnNewConversationClicked()
 {
-	// 1. 仅保留形式通知用于 UI 页面切换
 	OnNewConversationDelegate.ExecuteIfBound();
 	return FReply::Handled();
 }
@@ -89,30 +83,3 @@ FReply STopBar::OnShowHistoryClicked()
 	OnShowHistoryDelegate.ExecuteIfBound();
 	return FReply::Handled();
 }
-
-// ... 辅助函数省略 ...
-FString STopBar::GetLocalUserName() const
-{
-	if (GEditor)
-	{
-		if (UAuthenticationSubsystem* AuthSys = GEditor->GetEditorSubsystem<UAuthenticationSubsystem>())
-		{
-			return AuthSys->GetActiveUserDisplayName();
-		}
-	}
-	return NSLOCTEXT("UmgMcp", "LocalUser", "Local User").ToString();
-}
-
-bool STopBar::GetIsLoggedIn() const
-{
-	if (GEditor)
-	{
-		if (UAuthenticationSubsystem* AuthSys = GEditor->GetEditorSubsystem<UAuthenticationSubsystem>())
-		{
-			return AuthSys->IsAnyAccountLoggedIn();
-		}
-	}
-	return bIsLoggedIn;
-}
-FText STopBar::GetHistoryToolTip() const { return FText::FromString(TEXT("History")); }
-FText STopBar::GetNewConvToolTip() const { return FText::FromString(TEXT("New Conversation")); }

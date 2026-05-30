@@ -1,5 +1,5 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
-#include "Messages/SAgentResponseGroup/SMcpToolItem.h"
+#include "SMcpToolItem.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Layout/SBorder.h"

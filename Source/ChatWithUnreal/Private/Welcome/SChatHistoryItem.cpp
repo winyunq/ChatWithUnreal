@@ -1,41 +1,54 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SChatHistoryItem.h"
-
-#include "Styling/AppStyle.h"
-#include "Widgets/Input/SButton.h"
-#include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Styling/AppStyle.h"
 
 void SChatHistoryItem::Construct(const FArguments& InArgs)
 {
 	SessionId = InArgs._SessionId;
-	Title = InArgs._Title;
-	MessageCount = InArgs._MessageCount;
-	OnClickedDelegate = InArgs._OnClicked;
+	SessionName = InArgs._SessionName;
+	OnSelectedDelegate = InArgs._OnSelected;
+	OnDeletedDelegate = InArgs._OnDeleted;
 
-	ChildSlot[
-		SNew(SBorder)
-		.BorderImage(FAppStyle::Get().GetBrush("ToolPanel.GroupBorder"))
-		.Padding(FMargin(10.0f, 6.0f))
+	ChildSlot
+	[
+		SNew(SButton)
+		.ButtonStyle(FAppStyle::Get(), "NoBorder")
+		.OnClicked(this, &SChatHistoryItem::HandleClicked)
+		.ContentPadding(FMargin(12, 8))
 		[
-			SNew(SButton)
-			.ButtonStyle(FAppStyle::Get(), "FlatButton")
-			.OnClicked(this, &SChatHistoryItem::HandleClicked)
+			SNew(SBorder)
+			.BorderImage(FAppStyle::GetBrush("DetailsView.CategoryMiddle"))
+			.BorderBackgroundColor(FLinearColor(0.2f, 0.2f, 0.2f, 0.4f))
+			.Padding(FMargin(8, 4))
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
 				.FillWidth(1.0f)
+				.VAlign(VAlign_Center)
 				[
 					SNew(STextBlock)
-					.Text(FText::FromString(Title))
+					.Text(FText::FromString(SessionName))
+					.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+					.ColorAndOpacity(FLinearColor(0.8f, 0.8f, 0.8f, 1.0f))
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
-				.Padding(8.0f, 0.0f, 0.0f, 0.0f)
+				.VAlign(VAlign_Center)
 				[
-					SNew(STextBlock)
-					.Text(FText::AsNumber(MessageCount))
+					SNew(SButton)
+					.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
+					.OnClicked(this, &SChatHistoryItem::HandleDeleteClicked)
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("")))
+						.Font(FAppStyle::Get().GetFontStyle("FontAwesome.10"))
+						.ColorAndOpacity(FLinearColor(0.4f, 0.4f, 0.4f, 0.6f))
+					]
 				]
 			]
 		]
@@ -44,9 +57,12 @@ void SChatHistoryItem::Construct(const FArguments& InArgs)
 
 FReply SChatHistoryItem::HandleClicked()
 {
-	if (OnClickedDelegate.IsBound())
-	{
-		OnClickedDelegate.Execute(SessionId);
-	}
+	OnSelectedDelegate.ExecuteIfBound(SessionId);
+	return FReply::Handled();
+}
+
+FReply SChatHistoryItem::HandleDeleteClicked()
+{
+	OnDeletedDelegate.ExecuteIfBound(SessionId);
 	return FReply::Handled();
 }

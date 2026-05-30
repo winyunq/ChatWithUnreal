@@ -6,7 +6,6 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Styling/AppStyle.h"
-#include "FabServer/ChatSystem/UmgMcpActiveMessageSubsystem.h"
 #include "Editor.h"
 
 namespace
@@ -35,6 +34,7 @@ SInteractionModeSelector::~SInteractionModeSelector()
 void SInteractionModeSelector::Construct(const FArguments& InArgs)
 {
 	CurrentMode = TEXT("Chat");
+	OnInteractionModeChangedEvent = InArgs._OnInteractionModeChanged;
 
 	Options = {
 		MakeShared<FString>(TEXT("Chat")),
@@ -77,13 +77,7 @@ void SInteractionModeSelector::Construct(const FArguments& InArgs)
 		]
 	];
 
-	if (GEditor)
-	{
-		if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-		{
-			Subsystem->SetInteractionMode(CurrentMode);
-		}
-	}
+	OnInteractionModeChangedEvent.ExecuteIfBound(CurrentMode);
 }
 
 FText SInteractionModeSelector::GetModeDisplayTextAttr() const
@@ -107,12 +101,19 @@ void SInteractionModeSelector::OnSelectionChanged(TSharedPtr<FString> NewValue, 
 		GConfig->SetString(TEXT("UmgMcp.UIState"), TEXT("LastSelectedMode"), *CurrentMode, GEditorPerProjectIni);
 		GConfig->Flush(false, GEditorPerProjectIni);
 
-		if (GEditor)
+		OnInteractionModeChangedEvent.ExecuteIfBound(CurrentMode);
+	}
+}
+
+void SInteractionModeSelector::SetCurrentModeDirect(const FString& NewMode)
+{
+	for (const auto& Opt : Options)
+	{
+		if (Opt.IsValid() && *Opt == NewMode)
 		{
-			if (auto* Subsystem = GEditor->GetEditorSubsystem<UActiveMessageSubsystem>())
-			{
-				Subsystem->SetInteractionMode(CurrentMode);
-			}
+			ComboBox->SetSelectedItem(Opt);
+			CurrentMode = NewMode;
+			break;
 		}
 	}
 }

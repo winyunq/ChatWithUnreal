@@ -1,5 +1,6 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SAgentAvatar.h"
+#include "ChatWithUnrealStyle.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
@@ -16,6 +17,7 @@ namespace
 void SAgentAvatar::Construct(const FArguments& InArgs)
 {
 	AgentName = InArgs._AgentName;
+	SourceBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.ChatAvatar");
 	SAvatar::Construct(SAvatar::FArguments());
 }
 

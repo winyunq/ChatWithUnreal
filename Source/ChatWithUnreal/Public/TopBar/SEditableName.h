@@ -5,36 +5,23 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
-// 头部栏用户名组件：非登录态支持“点击编辑”逻辑，登录态只读
+class SEditableText;
+
+/**
+ * SEditableName：纯粹的名字展示与编辑组件。
+ */
 class CHATWITHUNREAL_API SEditableName : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SEditableName)
-		: _IsLoggedIn(false)
-	{}
-		SLATE_ATTRIBUTE(FString, UserName)
-		SLATE_ATTRIBUTE(bool, IsLoggedIn)
+	SLATE_BEGIN_ARGS(SEditableName) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
+	/** 还原原始接口：设置用户信息 */
+	void SetUserMetadata(const FString& InName, bool bInIsLoggedIn);
+
 private:
-	FText GetNameText() const;
-	
-	// 显隐逻辑
-	EVisibility GetReadOnlyVisibility() const;
-	EVisibility GetEditableVisibility() const;
-	EVisibility GetEditButtonVisibility() const;
-
-	// 交互逻辑
-	FReply OnEditClicked();
-	void OnNameCommitted(const FText& NewText, ETextCommit::Type CommitType);
-
-	TAttribute<FString> UserName;
-	TAttribute<bool> IsLoggedIn;
-	
-	// 本地状态：是否正在编辑
-	bool bIsEditing = false;
-
-	TSharedPtr<class SEditableText> EditableText;
+	TSharedPtr<SEditableText> NameInput;
+	bool bIsLoggedIn = false;
 };

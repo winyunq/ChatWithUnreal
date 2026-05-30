@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SChatWelcome.h"
-#include "FabServer/ChatSystem/UmgMcpSessionManagerSubsystem.h"
-#include "Editor.h"
+#include "SChatHistoryItem.h"
 
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
@@ -12,7 +11,9 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
+#include "HAL/PlatformProcess.h"
 
 namespace
 {
@@ -30,7 +31,8 @@ namespace
 
 void SChatWelcome::Construct(const FArguments& InArgs)
 {
-	OnSessionSelected = InArgs._OnSessionSelected;
+	OnSessionSelectedEvent = InArgs._OnSessionSelected;
+	OnSessionDeletedEvent = InArgs._OnSessionDeleted;
 
 	ChildSlot
 	[
@@ -161,120 +163,99 @@ void SChatWelcome::Construct(const FArguments& InArgs)
 			]
 		]
 	];
-
-	RefreshHistoryList();
 }
 
-void SChatWelcome::RefreshHistoryList()
+void SChatWelcome::ClearHistoryList()
+{
+	if (HistoryListBox.IsValid())
+	{
+		HistoryListBox->ClearChildren();
+	}
+}
+
+void SChatWelcome::AddHistoryItem(const FString& SessionId, const FString& Title, int32 MessageCount, const FDateTime& LastModified)
 {
 	if (!HistoryListBox.IsValid()) return;
-	HistoryListBox->ClearChildren();
 
-	TArray<FUmgMcpSessionIndex> Sessions;
-	if (GEditor)
-	{
-		if (USessionManagerSubsystem* SessionSubsystem = GEditor->GetEditorSubsystem<USessionManagerSubsystem>())
-		{
-			Sessions = SessionSubsystem->GetRecentSessions(10);
-		}
-	}
-
-	for (const FUmgMcpSessionIndex& Session : Sessions)
-	{
-		HistoryListBox->AddSlot()
-		.AutoHeight()
-		.Padding(FMargin(0.0f, 2.0f))
+	HistoryListBox->AddSlot()
+	.AutoHeight()
+	.Padding(FMargin(0.0f, 2.0f))
+	[
+		SNew(SBorder)
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
+		.Padding(FMargin(2.0f))
 		[
-			SNew(SBorder)
-			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
-			.Padding(FMargin(2.0f))
+			SNew(SButton)
+			.ButtonStyle(FAppStyle::Get(), "FlatButton")
+			.OnClicked_Lambda([this, SessionId]() {
+				OnHistoryItemSelected(SessionId);
+				return FReply::Handled();
+			})
 			[
-				// 修复：使用 Lambda 捕获 SessionId 并返回 FReply
-				SNew(SButton)
-				.ButtonStyle(FAppStyle::Get(), "FlatButton")
-				.OnClicked_Lambda([this, SessionID = Session.SessionId]() {
-					return OnSessionClicked(SessionID);
-				})
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				.Padding(8, 4)
+				.VAlign(VAlign_Center)
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.FillWidth(1.0f)
-					.Padding(8, 4)
-					.VAlign(VAlign_Center)
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(Session.Title))
-							.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
-						]
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(FormatDateTime(Session.LastModified)))
-							.Font(FAppStyle::Get().GetFontStyle("SmallFont"))
-							.ColorAndOpacity(FLinearColor::Gray)
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(8, 0)
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
 					[
 						SNew(STextBlock)
-						.Text(FText::AsNumber(Session.MessageCount))
-						.Font(FAppStyle::Get().GetFontStyle("SmallFont"))
-						.ColorAndOpacity(FLinearColor(0.5f, 0.5f, 0.5f))
+						.Text(FText::FromString(Title))
+						.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
 					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(0, 0, 4, 0)
+					+ SVerticalBox::Slot().AutoHeight()
 					[
-						SNew(SButton)
-						.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
-						.OnClicked_Lambda([this, SessionID = Session.SessionId]() {
-							if (GEditor)
-							{
-								if (USessionManagerSubsystem* SessionSubsystem = GEditor->GetEditorSubsystem<USessionManagerSubsystem>())
-								{
-									SessionSubsystem->DeleteSession(SessionID);
-								}
-							}
-							return FReply::Handled();
-						})
-						.ToolTipText(FText::FromString(TEXT("Delete this conversation")))
-						[
-							SNew(STextBlock)
-							.Text(FText::FromString(TEXT("x")))
-							.Font(FAppStyle::Get().GetFontStyle("NormalFontBold"))
-							.ColorAndOpacity(FLinearColor::Gray)
-						]
+						SNew(STextBlock)
+						.Text(FText::FromString(FormatDateTime(LastModified)))
+						.Font(FAppStyle::Get().GetFontStyle("SmallFont"))
+						.ColorAndOpacity(FLinearColor::Gray)
+					]
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(8, 0)
+				[
+					SNew(STextBlock)
+					.Text(FText::AsNumber(MessageCount))
+					.Font(FAppStyle::Get().GetFontStyle("SmallFont"))
+					.ColorAndOpacity(FLinearColor(0.5f, 0.5f, 0.5f))
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(0, 0, 4, 0)
+				[
+					SNew(SButton)
+					.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
+					.OnClicked_Lambda([this, SessionId]() {
+						OnHistoryItemDeleted(SessionId);
+						return FReply::Handled();
+					})
+					.ToolTipText(FText::FromString(TEXT("Delete this conversation")))
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString(TEXT("x")))
+						.Font(FAppStyle::Get().GetFontStyle("NormalFontBold"))
+						.ColorAndOpacity(FLinearColor::Gray)
 					]
 				]
 			]
-		];
-	}
+		]
+	];
 }
 
-FReply SChatWelcome::OnSessionClicked(FString SessionId)
+void SChatWelcome::OnHistoryItemSelected(const FString& SessionId)
 {
-	// 1. 端到端直连执行实质：恢复会话
-	if (GEditor)
-	{
-		if (USessionManagerSubsystem* SessionSubsystem = GEditor->GetEditorSubsystem<USessionManagerSubsystem>())
-		{
-			SessionSubsystem->ResumeSession(SessionId);
-		}
-	}
+	UE_LOG(LogTemp, Log, TEXT("Winyunq UI Signal: History Item [%s] Clicked. Executing Broadcast."), *SessionId);
+	OnSessionSelectedEvent.ExecuteIfBound(SessionId);
+}
 
-	// 2. 通知形式层切换页面
-	if (OnSessionSelected.IsBound())
-	{
-		OnSessionSelected.Execute(SessionId);
-	}
-	return FReply::Handled();
+void SChatWelcome::OnHistoryItemDeleted(const FString& SessionId)
+{
+	OnSessionDeletedEvent.ExecuteIfBound(SessionId);
 }
 
 EVisibility SChatWelcome::GetEmptyListVisibility() const

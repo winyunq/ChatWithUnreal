@@ -1,5 +1,6 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SUserAvatar.h"
+#include "ChatWithUnrealStyle.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
@@ -15,6 +16,7 @@ namespace
 
 void SUserAvatar::Construct(const FArguments& InArgs)
 {
+	SourceBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.ChatAvatar");
 	SAvatar::Construct(SAvatar::FArguments());
 }
 

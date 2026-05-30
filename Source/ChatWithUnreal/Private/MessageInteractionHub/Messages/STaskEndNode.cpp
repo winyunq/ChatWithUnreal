@@ -7,7 +7,7 @@
 
 void STaskEndNode::Construct(const FArguments& InArgs)
 {
-	const FUmgMcpTaskRecord Task = InArgs._TaskRecord;
+	const FString TaskId = InArgs._TaskId;
 	ChildSlot
 	[
 		SNew(SBorder)
@@ -15,7 +15,7 @@ void STaskEndNode::Construct(const FArguments& InArgs)
 		.Padding(FMargin(8.0f))
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(FString::Printf(TEXT("task_end: %s"), *Task.TaskId)))
+			.Text(FText::FromString(FString::Printf(TEXT("task_end: %s"), *TaskId)))
 		]
 	];
 }

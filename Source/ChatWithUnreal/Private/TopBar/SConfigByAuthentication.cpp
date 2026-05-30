@@ -1,7 +1,6 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SConfigByAuthentication.h"
 
-#include "FabServer/AIProviders/UmgMcpAiSubsystem.h"
 #include "Editor.h"
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Text/STextBlock.h"

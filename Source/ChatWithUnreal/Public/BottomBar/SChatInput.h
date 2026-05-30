@@ -5,16 +5,21 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
-DECLARE_DELEGATE_ThreeParams(FOnPasteImage, const TArray<uint8>& /*ImageData*/, int32 /*Width*/, int32 /*Height*/);
+DECLARE_DELEGATE_OneParam(FOnImageTagErased, int32 /*ErasedIndex*/);
+DECLARE_DELEGATE_OneParam(FOnFilesDropped, const TArray<FString>& /*Files*/);
 
 /**
  * SChatInput：原子控件，仅负责多行文本输入。
- * 模式选择、发送按钮等已被剥离到 BottomBar 的其他原子控件中。
  */
 class CHATWITHUNREAL_API SChatInput : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SChatInput) {}
+		SLATE_EVENT(FSimpleDelegate, OnSendShortcutTriggered)
+		SLATE_EVENT(FSimpleDelegate, OnPasteShortcutTriggered)
+		SLATE_EVENT(FOnImageTagErased, OnImageTagErased)
+		SLATE_EVENT(FSimpleDelegate, OnAllImageTagsErased)
+		SLATE_EVENT(FOnFilesDropped, OnFilesDropped)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -22,7 +27,8 @@ public:
 	FText GetText() const;
 	void SetText(const FText& InText);
 	void ClearText();
-	void RemoveImageTag(const FString& InImageId);
+	
+	void RemoveImageTag(int32 TargetIndex);
 	void InsertImageTag(const FString& InImageId);
 
 public:
@@ -35,5 +41,11 @@ private:
 
 	TSharedPtr<class SMultiLineEditableTextBox> InputTextBox;
 	FString LastText;
-	bool bIsUpdatingText;
+	bool bIsUpdatingText = false;
+
+	FSimpleDelegate OnSendShortcutTriggeredEvent;
+	FSimpleDelegate OnPasteShortcutTriggeredEvent;
+	FOnImageTagErased OnImageTagErasedEvent;
+	FSimpleDelegate OnAllImageTagsErasedEvent;
+	FOnFilesDropped OnFilesDroppedEvent;
 };

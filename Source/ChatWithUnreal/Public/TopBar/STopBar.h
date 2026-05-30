@@ -5,40 +5,33 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
+class SUserAvatar;
+class SEditableName;
+
 /**
- * STopBar：顶部栏核心容器。
- * 负责头像、用户名以及功能按钮（历史、新建）的原子拼装。
+ * STopBar：顶部栏容器。
+ * 纯展示层，由后端驱动。
  */
 class CHATWITHUNREAL_API STopBar : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(STopBar) {}
-		SLATE_ARGUMENT(FSimpleDelegate, OnNewConversation)
-		SLATE_ARGUMENT(FSimpleDelegate, OnShowHistory)
+		SLATE_EVENT(FSimpleDelegate, OnNewConversation)
+		SLATE_EVENT(FSimpleDelegate, OnShowHistory)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
-private:
-	// 修复：补全缺失的属性绑定函数声明
-	FString GetLocalUserName() const;
-	bool GetIsLoggedIn() const;
-	FText GetHistoryToolTip() const;
-	FText GetNewConvToolTip() const;
+	/** 还原原始接口：设置用户信息 */
+	void SetUserMetadata(const FString& UserName, bool bIsLoggedIn);
 
-	// 功能转发
+private:
 	FReply OnNewConversationClicked();
 	FReply OnShowHistoryClicked();
 
-	// 事件代理
 	FSimpleDelegate OnNewConversationDelegate;
 	FSimpleDelegate OnShowHistoryDelegate;
 
-	// 状态变量
-	// 修复：补全缺失的变量声明
-	FString LocalUserName;
-	bool bIsLoggedIn;
-
-	// 原子组件
-	TSharedPtr<class SUserAvatar> AvatarWidget;
+	TSharedPtr<SUserAvatar> AvatarWidget;
+	TSharedPtr<SEditableName> NameWidget;
 };

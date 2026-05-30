@@ -5,8 +5,6 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
-struct FUmgMcpActiveChatStateEvent; // forward-declare to avoid heavy includes
-
 /**
  * SSystemNotificationWidget
  * 系统消息表现层：实现居中的通知文本，支持错误重试按钮。
@@ -28,6 +26,5 @@ private:
 	FSimpleDelegate OnRetryDelegate;
 	TSharedPtr<class SButton> RetryButton;
 
-	void HandleActiveStateChanged(const FUmgMcpActiveChatStateEvent& Event);
 	FReply OnRetryClicked();
 };
