@@ -64,22 +64,23 @@ TSharedRef< FSlateStyleSet > FChatWithUnrealStyle::Realize()
 
 	// 加粗 (b)
 	FTextBlockStyle BoldText = RichNormal;
-	BoldText.SetFont(FCoreStyle::GetDefaultFontStyle("Bold", 10));
+	BoldText.Font.TypefaceFontName = TEXT("Bold");
 	Style->Set("b", BoldText);
 
 	// 斜体 (i)
 	FTextBlockStyle ItalicText = RichNormal;
-	ItalicText.SetFont(FCoreStyle::GetDefaultFontStyle("Italic", 10));
+	ItalicText.Font.TypefaceFontName = TEXT("Italic");
 	Style->Set("i", ItalicText);
 
 	// 粗斜体 (bi)
 	FTextBlockStyle BoldItalicText = RichNormal;
-	BoldItalicText.SetFont(FCoreStyle::GetDefaultFontStyle("BoldItalic", 10));
+	BoldItalicText.Font.TypefaceFontName = TEXT("BoldItalic");
 	Style->Set("bi", BoldItalicText);
 
 	// 代码块 (code)
 	FTextBlockStyle CodeText = RichNormal;
-	CodeText.SetFont(FCoreStyle::GetDefaultFontStyle("Mono", 9));
+	CodeText.Font.TypefaceFontName = TEXT("Mono");
+	CodeText.Font.Size = RichNormal.Font.Size - 1.0f;
 	CodeText.SetColorAndOpacity(FLinearColor(0.4f, 0.8f, 1.0f)); 
 	Style->Set("code", CodeText);
 
