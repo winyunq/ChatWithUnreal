@@ -123,6 +123,7 @@ void SBottomBar::Construct(const FArguments& InArgs)
 				[
 					SNew(SImage)
 					.Image(FAppStyle::Get().GetBrush("Icons.Plus"))
+				]
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
