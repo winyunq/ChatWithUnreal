@@ -138,11 +138,20 @@ namespace
 			if (TrimmedLine.StartsWith(TEXT("> ")))
 			{
 				FString QuoteText = TrimmedLine.Mid(2).TrimStartAndEnd();
+				bool bHasInlineStyles = QuoteText.Contains(TEXT("*")) || QuoteText.Contains(TEXT("_")) || QuoteText.Contains(TEXT("`"));
 				ApplyInlineMD(QuoteText, TEXT("***"), TEXT("bi"));
 				ApplyInlineMD(QuoteText, TEXT("**"), TEXT("b"));
 				ApplyInlineMD(QuoteText, TEXT("*"), TEXT("i"));
 				ApplyInlineMD(QuoteText, TEXT("`"), TEXT("code"));
-				FinalLine = FString::Printf(TEXT("<quote style=\"quote\">%s</>"), *QuoteText);
+				
+				if (bHasInlineStyles)
+				{
+					FinalLine = FString::Printf(TEXT("▎ %s"), *QuoteText);
+				}
+				else
+				{
+					FinalLine = FString::Printf(TEXT("<quote style=\"quote\">%s</>"), *QuoteText);
+				}
 				Line = FinalLine;
 				continue;
 			}
