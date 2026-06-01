@@ -114,15 +114,18 @@ void SBottomBar::Construct(const FArguments& InArgs)
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
+			.VAlign(VAlign_Center)
 			.Padding(5.0f, 0.0f)
 			[
 				SNew(SButton)
 				.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
+				.ContentPadding(FMargin(5.0f))
 				.ToolTipText(FText::FromString(TEXT("Add Image Attachment")))
 				.OnClicked(this, &SBottomBar::OnAddAttachmentClicked)
 				[
 					SNew(SImage)
 					.Image(FAppStyle::Get().GetBrush("Icons.Plus"))
+					.DesiredSizeOverride(FVector2D(16.0f, 16.0f))
 				]
 			]
 			+ SHorizontalBox::Slot()
