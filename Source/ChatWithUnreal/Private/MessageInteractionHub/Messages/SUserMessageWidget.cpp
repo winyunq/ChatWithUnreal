@@ -6,6 +6,7 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/Text/SRichTextBlock.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Images/SImage.h"
 #include "Styling/AppStyle.h"
@@ -14,6 +15,11 @@
 #include "Engine/Texture2D.h"
 #include "Editor.h"
 #include "ImageUtils.h"
+
+// Slate 富文本及排版框架
+#include "Framework/Text/ITextDecorator.h"
+#include "Framework/Text/SlateTextRun.h"
+#include "Framework/Text/IRun.h"
 
 namespace
 {
@@ -35,12 +41,223 @@ namespace
 		}
 		return Result;
 	}
+
+	static FString ConvertMarkdownToRichText(const FString& InText)
+	{
+		if (InText.IsEmpty()) return FString();
+
+		FString CleanText = InText;
+		int32 BeginIdx = 0;
+		while ((BeginIdx = CleanText.Find(TEXT("<WinyunqImageBegin>"))) != INDEX_NONE)
+		{
+			int32 EndIdx = CleanText.Find(TEXT("<WinyunqImageEnd>"), ESearchCase::CaseSensitive, ESearchDir::FromStart, BeginIdx);
+			if (EndIdx != INDEX_NONE)
+			{
+				FString ImageId = CleanText.Mid(BeginIdx + 19, EndIdx - (BeginIdx + 19));
+				CleanText.RemoveAt(BeginIdx, EndIdx + 17 - BeginIdx);
+				CleanText.InsertAt(BeginIdx, FString::Printf(TEXT(" [📷 %s] "), *ImageId));
+			}
+			else
+			{
+				CleanText.RemoveAt(BeginIdx, 19);
+			}
+		}
+
+		// 1. 转义关键字符 (HTML 实体化)
+		FString Escaped = CleanText;
+		Escaped = Escaped.Replace(TEXT("&"), TEXT("&amp;"));
+		Escaped = Escaped.Replace(TEXT("<"), TEXT("&lt;"));
+		Escaped = Escaped.Replace(TEXT(">"), TEXT("&gt;"));
+
+		TArray<FString> Lines;
+		Escaped.ParseIntoArrayLines(Lines, false);
+
+		auto ApplyInlineMD = [](FString& Str, const FString& MDTag, const FString& RichTag) {
+			int32 StartIdx = 0;
+			while (StartIdx < Str.Len())
+			{
+				int32 OpenPos = Str.Find(MDTag, ESearchCase::CaseSensitive, ESearchDir::FromStart, StartIdx);
+				if (OpenPos == INDEX_NONE) break;
+
+				int32 ClosePos = Str.Find(MDTag, ESearchCase::CaseSensitive, ESearchDir::FromStart, OpenPos + MDTag.Len());
+				if (ClosePos == INDEX_NONE)
+				{
+					StartIdx = OpenPos + MDTag.Len();
+					continue;
+				}
+
+				FString InsideText = Str.Mid(OpenPos + MDTag.Len(), ClosePos - (OpenPos + MDTag.Len()));
+				FString Replacement = FString::Printf(TEXT("<%s>%s</>"), *RichTag, *InsideText);
+
+				int32 TotalLengthToRemove = ClosePos - OpenPos + MDTag.Len();
+				Str.RemoveAt(OpenPos, TotalLengthToRemove);
+				Str.InsertAt(OpenPos, Replacement);
+
+				StartIdx = OpenPos + Replacement.Len();
+			}
+			};
+
+		auto StripInlineMD = [](FString& Str) {
+			Str = Str.Replace(TEXT("***"), TEXT("")).Replace(TEXT("**"), TEXT("")).Replace(TEXT("*"), TEXT(""));
+			Str = Str.Replace(TEXT("~~"), TEXT("")).Replace(TEXT("`"), TEXT("")).Replace(TEXT("__"), TEXT(""));
+			};
+
+		for (FString& Line : Lines)
+		{
+			FString TrimmedLine = Line.TrimEnd();
+			if (TrimmedLine.IsEmpty()) continue;
+
+			FString FinalLine;
+
+			if (TrimmedLine.StartsWith(TEXT("---")) || TrimmedLine.StartsWith(TEXT("***")))
+			{
+				FString Temp = TrimmedLine.Replace(TEXT("-"), TEXT("")).Replace(TEXT("*"), TEXT("")).Replace(TEXT(" "), TEXT(""));
+				if (Temp.IsEmpty() && TrimmedLine.Len() >= 3)
+				{
+					FinalLine = TEXT("<hr style=\"hr\">\u200B</>");
+					Line = FinalLine;
+					continue;
+				}
+			}
+
+			int32 HeaderLevel = 0;
+			while (HeaderLevel < TrimmedLine.Len() && TrimmedLine[HeaderLevel] == '#' && HeaderLevel < 6)
+			{
+				HeaderLevel++;
+			}
+			if (HeaderLevel > 0 && TrimmedLine.Len() > HeaderLevel && TrimmedLine[HeaderLevel] == ' ')
+			{
+				FString HeaderText = TrimmedLine.Mid(HeaderLevel + 1).TrimStartAndEnd();
+				StripInlineMD(HeaderText);
+				FinalLine = FString::Printf(TEXT("<h%d style=\"h%d\">%s</>"), HeaderLevel, HeaderLevel, *HeaderText);
+				Line = FinalLine;
+				continue;
+			}
+
+			if (TrimmedLine.StartsWith(TEXT("> ")))
+			{
+				FString QuoteText = TrimmedLine.Mid(2).TrimStartAndEnd();
+				ApplyInlineMD(QuoteText, TEXT("***"), TEXT("bi"));
+				ApplyInlineMD(QuoteText, TEXT("**"), TEXT("b"));
+				ApplyInlineMD(QuoteText, TEXT("*"), TEXT("i"));
+				ApplyInlineMD(QuoteText, TEXT("`"), TEXT("code"));
+				FinalLine = FString::Printf(TEXT("<quote style=\"quote\">%s</>"), *QuoteText);
+				Line = FinalLine;
+				continue;
+			}
+
+			ApplyInlineMD(Line, TEXT("***"), TEXT("bi"));
+			ApplyInlineMD(Line, TEXT("**"), TEXT("b"));
+			ApplyInlineMD(Line, TEXT("*"), TEXT("i"));
+			ApplyInlineMD(Line, TEXT("`"), TEXT("code"));
+		}
+
+		return FString::Join(Lines, TEXT("\n"));
+	}
+
+	class FSimpleRichTextDecorator : public ITextDecorator
+	{
+	public:
+		static TSharedRef<FSimpleRichTextDecorator> Create(const ISlateStyle* InStyleSet)
+		{
+			return MakeShareable(new FSimpleRichTextDecorator(InStyleSet));
+		}
+
+		virtual bool Supports(const FTextRunParseResults& RunParseResults, const FString& Text) const override
+		{
+			const FString& TagName = RunParseResults.Name;
+			return TagName.Equals(TEXT("b"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("i"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("bi"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("code"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("quote"), ESearchCase::IgnoreCase) ||
+				   TagName.StartsWith(TEXT("h"), ESearchCase::IgnoreCase);
+		}
+
+		virtual TSharedRef<ISlateRun> Create(const TSharedRef<class FTextLayout>& TextLayout, const FTextRunParseResults& RunParseResults, const FString& OriginalText, const TSharedRef<FString>& InOutModelText, const ISlateStyle* InStyleSet) override
+		{
+			FTextRange ModelRange;
+			ModelRange.BeginIndex = InOutModelText->Len();
+
+			FString RunContent = OriginalText.Mid(RunParseResults.ContentRange.BeginIndex, RunParseResults.ContentRange.EndIndex - RunParseResults.ContentRange.BeginIndex);
+			*InOutModelText += RunContent;
+
+			ModelRange.EndIndex = InOutModelText->Len();
+
+			FTextBlockStyle Style = InStyleSet->GetWidgetStyle<FTextBlockStyle>(TEXT("NormalText"));
+			
+			const FString& TagName = RunParseResults.Name;
+			FSlateFontInfo ModifiedFont = Style.Font;
+
+			if (TagName.Equals(TEXT("b"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Bold");
+			}
+			else if (TagName.Equals(TEXT("i"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Italic");
+			}
+			else if (TagName.Equals(TEXT("bi"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("BoldItalic");
+			}
+			else if (TagName.Equals(TEXT("code"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Monospace");
+				ModifiedFont.Size = Style.Font.Size - 1.0f;
+				Style.SetColorAndOpacity(FLinearColor(0.85f, 0.4f, 0.4f, 1.0f));
+			}
+			else if (TagName.Equals(TEXT("quote"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Italic");
+				Style.SetColorAndOpacity(FLinearColor(0.55f, 0.55f, 0.6f, 1.0f));
+			}
+			else if (TagName.StartsWith(TEXT("h"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Bold");
+				int32 Level = 1;
+				if (TagName.Len() > 1)
+				{
+					Level = FCString::Valatoi(*TagName.Right(1));
+				}
+				
+				if (Level == 1) ModifiedFont.Size = Style.Font.Size + 6.0f;
+				else if (Level == 2) ModifiedFont.Size = Style.Font.Size + 4.0f;
+				else if (Level == 3) ModifiedFont.Size = Style.Font.Size + 3.0f;
+				else if (Level == 4) ModifiedFont.Size = Style.Font.Size + 2.0f;
+				else ModifiedFont.Size = Style.Font.Size + 1.0f;
+
+				Style.SetColorAndOpacity(FLinearColor(0.9f, 0.9f, 0.95f, 1.0f));
+			}
+
+			Style.SetFont(ModifiedFont);
+
+			FRunInfo RunInfo;
+			RunInfo.Name = RunParseResults.Name;
+			for (const auto& MetaPair : RunParseResults.MetaData)
+			{
+				const FTextRange& Range = MetaPair.Value;
+				FString MetaValue = OriginalText.Mid(Range.BeginIndex, Range.EndIndex - Range.BeginIndex);
+				RunInfo.MetaData.Add(MetaPair.Key, MetaValue);
+			}
+
+			TSharedRef<const FString> ConstModelText = InOutModelText;
+			return FSlateTextRun::Create(RunInfo, ConstModelText, Style, ModelRange);
+		}
+
+	private:
+		FSimpleRichTextDecorator(const ISlateStyle* InStyleSet) : StyleSet(InStyleSet) {}
+		const ISlateStyle* StyleSet;
+	};
 }
 
 void SUserMessageWidget::Construct(const FArguments& InArgs)
 {
 	MessageText = InArgs._MessageText;
 	Base64Images = InArgs._Base64Images;
+
+	TArray<TSharedRef<class ITextDecorator>> Decorators;
+	Decorators.Add(FSimpleRichTextDecorator::Create(&FAppStyle::Get()));
 
 	FString DisplayName = TEXT("User");
 
@@ -62,11 +279,14 @@ void SUserMessageWidget::Construct(const FArguments& InArgs)
 				.AutoHeight()
 				.Padding(0.0f, 2.0f)
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(NormalPart))
-					.AutoWrapText(true)
+					SNew(SRichTextBlock)
+					.Text(FText::FromString(ConvertMarkdownToRichText(NormalPart)))
+					.TextStyle(&FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
 					.ColorAndOpacity(FLinearColor::White)
-					.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+					.DecoratorStyleSet(&FAppStyle::Get())
+					.Decorators(Decorators)
+					.AutoWrapText(true)
+					.WrapTextAt(0.0f)
 				];
 			}
 			break;
@@ -81,11 +301,14 @@ void SUserMessageWidget::Construct(const FArguments& InArgs)
 				.AutoHeight()
 				.Padding(0.0f, 2.0f)
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(NormalPart))
-					.AutoWrapText(true)
+					SNew(SRichTextBlock)
+					.Text(FText::FromString(ConvertMarkdownToRichText(NormalPart)))
+					.TextStyle(&FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
 					.ColorAndOpacity(FLinearColor::White)
-					.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+					.DecoratorStyleSet(&FAppStyle::Get())
+					.Decorators(Decorators)
+					.AutoWrapText(true)
+					.WrapTextAt(0.0f)
 				];
 			}
 		}

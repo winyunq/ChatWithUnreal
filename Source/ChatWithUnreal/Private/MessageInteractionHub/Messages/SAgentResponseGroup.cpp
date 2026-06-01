@@ -193,29 +193,73 @@ namespace
 
 		virtual bool Supports(const FTextRunParseResults& RunParseResults, const FString& Text) const override
 		{
-			// 如果标签名是 b, i, code, h1, h2, h3 等，我们在 StyleSet 中都有定义
-			return StyleSet && StyleSet->HasWidgetStyle<FTextBlockStyle>(FName(*RunParseResults.Name));
+			const FString& TagName = RunParseResults.Name;
+			return TagName.Equals(TEXT("b"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("i"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("bi"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("code"), ESearchCase::IgnoreCase) ||
+				   TagName.Equals(TEXT("quote"), ESearchCase::IgnoreCase) ||
+				   TagName.StartsWith(TEXT("h"), ESearchCase::IgnoreCase);
 		}
 
 		virtual TSharedRef<ISlateRun> Create(const TSharedRef<class FTextLayout>& TextLayout, const FTextRunParseResults& RunParseResults, const FString& OriginalText, const TSharedRef<FString>& InOutModelText, const ISlateStyle* InStyleSet) override
 		{
-			// 1. 计算 ModelRange
-			// ModelRange 代表当前这个 Run 在最终生成的 InOutModelText 中的起始和结束位置
 			FTextRange ModelRange;
 			ModelRange.BeginIndex = InOutModelText->Len();
 
-			// 提取内容并追加到 ModelText
 			FString RunContent = OriginalText.Mid(RunParseResults.ContentRange.BeginIndex, RunParseResults.ContentRange.EndIndex - RunParseResults.ContentRange.BeginIndex);
 			*InOutModelText += RunContent;
 
 			ModelRange.EndIndex = InOutModelText->Len();
 
-			// 2. 获取 Style
-			// 假设你通过 RunParseResults.Name 来查找样式，如果找不到，通常需要一个默认样式
-			// 注意：这里使用传入的参数 InStyleSet 而不是 StyleSet
-			const FTextBlockStyle& Style = InStyleSet->GetWidgetStyle<FTextBlockStyle>(FName(*RunParseResults.Name));
+			FTextBlockStyle Style = InStyleSet->GetWidgetStyle<FTextBlockStyle>(TEXT("NormalText"));
+			
+			const FString& TagName = RunParseResults.Name;
+			FSlateFontInfo ModifiedFont = Style.Font;
 
-			// 3. 构建 RunInfo
+			if (TagName.Equals(TEXT("b"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Bold");
+			}
+			else if (TagName.Equals(TEXT("i"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Italic");
+			}
+			else if (TagName.Equals(TEXT("bi"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("BoldItalic");
+			}
+			else if (TagName.Equals(TEXT("code"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Monospace");
+				ModifiedFont.Size = Style.Font.Size - 1.0f;
+				Style.SetColorAndOpacity(FLinearColor(0.85f, 0.4f, 0.4f, 1.0f));
+			}
+			else if (TagName.Equals(TEXT("quote"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Italic");
+				Style.SetColorAndOpacity(FLinearColor(0.55f, 0.55f, 0.6f, 1.0f));
+			}
+			else if (TagName.StartsWith(TEXT("h"), ESearchCase::IgnoreCase))
+			{
+				ModifiedFont.TypefaceFontName = TEXT("Bold");
+				int32 Level = 1;
+				if (TagName.Len() > 1)
+				{
+					Level = FCString::Valatoi(*TagName.Right(1));
+				}
+				
+				if (Level == 1) ModifiedFont.Size = Style.Font.Size + 6.0f;
+				else if (Level == 2) ModifiedFont.Size = Style.Font.Size + 4.0f;
+				else if (Level == 3) ModifiedFont.Size = Style.Font.Size + 3.0f;
+				else if (Level == 4) ModifiedFont.Size = Style.Font.Size + 2.0f;
+				else ModifiedFont.Size = Style.Font.Size + 1.0f;
+
+				Style.SetColorAndOpacity(FLinearColor(0.9f, 0.9f, 0.95f, 1.0f));
+			}
+
+			Style.SetFont(ModifiedFont);
+
 			FRunInfo RunInfo;
 			RunInfo.Name = RunParseResults.Name;
 
