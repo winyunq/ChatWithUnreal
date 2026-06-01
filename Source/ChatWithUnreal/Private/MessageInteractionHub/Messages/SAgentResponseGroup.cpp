@@ -305,19 +305,20 @@ void SAgentResponseGroup::Construct(const FArguments& InArgs)
 			.HAlign(HAlign_Left)
 			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
 			[
-					SNew(SButton)
-					.ButtonStyle(FAppStyle::Get(), "SimpleButton")
-					.OnClicked_Lambda([this]() {
-						FPlatformApplicationMisc::ClipboardCopy(*MessageText);
-						return FReply::Handled();
-					})
-					.ToolTipText(FText::FromString(TEXT("Copy message")))
-					[
-						SNew(SImage)
-						.Image(FAppStyle::GetBrush("GenericCommands.Copy"))
-						.ColorAndOpacity(FLinearColor(0.4f, 0.4f, 0.4f, 0.8f))
-					]
-				
+				SNew(SButton)
+				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+				.ContentPadding(FMargin(4.0f, 2.0f))
+				.OnClicked_Lambda([this]() {
+					FPlatformApplicationMisc::ClipboardCopy(*MessageText);
+					return FReply::Handled();
+				})
+				.ToolTipText(FText::FromString(TEXT("Copy message")))
+				[
+					SNew(SImage)
+					.Image(FAppStyle::GetBrush("GenericCommands.Copy"))
+					.DesiredSizeOverride(FVector2D(12, 12))
+					.ColorAndOpacity(FLinearColor(0.4f, 0.4f, 0.4f, 0.8f))
+				]
 			]
 		]
 	];
@@ -330,6 +331,7 @@ void SAgentResponseGroup::Construct(const FArguments& InArgs)
 
 void SAgentResponseGroup::AddTextOutputBlock(const FString& NewText)
 {
+	MessageText = NewText;
 	if (TurnContentBox.IsValid() && !NewText.IsEmpty())
 	{
 		ActiveTextBlock.Reset();

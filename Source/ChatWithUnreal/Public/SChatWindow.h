@@ -13,29 +13,27 @@ class SBottomBar;
 class CHATWITHUNREAL_API SChatWindow : public SCompoundWidget
 {
 public:
-	DECLARE_MULTICAST_DELEGATE_OneParam(FOnChatWindowConstructed, TSharedRef<SChatWindow>);
-	static FOnChatWindowConstructed OnConstructed;
+	static TWeakPtr<SChatWindow> Instance;
 
 public:
 	SLATE_BEGIN_ARGS(SChatWindow) {}
 		SLATE_EVENT(FSimpleDelegate, OnShowHistory)
 		SLATE_EVENT(FSimpleDelegate, OnNewConversation)
+		SLATE_EVENT(FSimpleDelegate, OnSendClicked)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 	virtual ~SChatWindow();
 
-	TSharedPtr<SMessageInteractionHub> GetMessageHub() const { return MessageHubWidget; }
-	TSharedPtr<SBottomBar> GetBottomBar() const { return ChatInputWidget; }
-	TSharedPtr<STopBar> GetTopBar() const { return TopBarWidget; }
-
 	FSimpleDelegate OnShowHistory;
 	FSimpleDelegate OnNewConversation;
+	FSimpleDelegate OnSendClicked;
 
 private:
 	void OnShowHistoryClicked();
 	void OnNewConversationClicked();
 	void OnWelcomeSessionSelected(const FString& SessionId);
+	void OnSendClickedClicked();
 
 	TSharedPtr<STopBar> TopBarWidget;
 	TSharedPtr<SMessageInteractionHub> MessageHubWidget;
@@ -43,4 +41,5 @@ private:
 
 	FSimpleDelegate OnShowHistoryEvent;
 	FSimpleDelegate OnNewConversationEvent;
+	FSimpleDelegate OnSendClickedEvent;
 };

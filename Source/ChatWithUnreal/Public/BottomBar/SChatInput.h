@@ -7,6 +7,7 @@
 
 DECLARE_DELEGATE_OneParam(FOnImageTagErased, int32 /*ErasedIndex*/);
 DECLARE_DELEGATE_OneParam(FOnFilesDropped, const TArray<FString>& /*Files*/);
+DECLARE_DELEGATE_RetVal(FReply, FOnPasteShortcutTriggered);
 
 /**
  * SChatInput：原子控件，仅负责多行文本输入。
@@ -14,11 +15,12 @@ DECLARE_DELEGATE_OneParam(FOnFilesDropped, const TArray<FString>& /*Files*/);
 class CHATWITHUNREAL_API SChatInput : public SCompoundWidget
 {
 public:
+	static TWeakPtr<SChatInput> Instance;
+
+public:
 	SLATE_BEGIN_ARGS(SChatInput) {}
 		SLATE_EVENT(FSimpleDelegate, OnSendShortcutTriggered)
-		SLATE_EVENT(FSimpleDelegate, OnPasteShortcutTriggered)
-		SLATE_EVENT(FOnImageTagErased, OnImageTagErased)
-		SLATE_EVENT(FSimpleDelegate, OnAllImageTagsErased)
+		SLATE_EVENT(FOnPasteShortcutTriggered, OnPasteShortcutTriggered)
 		SLATE_EVENT(FOnFilesDropped, OnFilesDropped)
 	SLATE_END_ARGS()
 
@@ -30,6 +32,8 @@ public:
 	
 	void RemoveImageTag(int32 TargetIndex);
 	void InsertImageTag(const FString& InImageId);
+
+	void SetAttachmentList(TSharedPtr<class SAttachmentList> InList);
 
 public:
 	virtual FReply OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
@@ -43,9 +47,9 @@ private:
 	FString LastText;
 	bool bIsUpdatingText = false;
 
+	TWeakPtr<class SAttachmentList> AttachmentListWidget;
+
 	FSimpleDelegate OnSendShortcutTriggeredEvent;
-	FSimpleDelegate OnPasteShortcutTriggeredEvent;
-	FOnImageTagErased OnImageTagErasedEvent;
-	FSimpleDelegate OnAllImageTagsErasedEvent;
+	FOnPasteShortcutTriggered OnPasteShortcutTriggeredEvent;
 	FOnFilesDropped OnFilesDroppedEvent;
 };

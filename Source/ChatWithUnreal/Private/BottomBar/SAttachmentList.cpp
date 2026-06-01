@@ -10,9 +10,14 @@
 #include "Brushes/SlateDynamicImageBrush.h"
 #include "Engine/Texture2D.h"
 #include "Editor.h"
+#include "ImageUtils.h"
+#include "Misc/Base64.h"
+
+TWeakPtr<SAttachmentList> SAttachmentList::Instance = nullptr;
 
 void SAttachmentList::Construct(const FArguments& InArgs)
 {
+	Instance = SharedThis(this);
 	OnAttachmentAddedEvent = InArgs._OnAttachmentAdded;
 	OnAttachmentRemovedEvent = InArgs._OnAttachmentRemoved;
 
@@ -20,6 +25,11 @@ void SAttachmentList::Construct(const FArguments& InArgs)
 	[
 		SAssignNew(ListContainer, SHorizontalBox)
 	];
+}
+
+SAttachmentList::~SAttachmentList()
+{
+	ClearAttachments();
 }
 
 TArray<FString> SAttachmentList::GetBase64Images() const
@@ -31,13 +41,16 @@ TArray<FString> SAttachmentList::GetBase64Images() const
 	}
 	return Res;
 }
-
 void SAttachmentList::ClearAttachments()
 {
 	for (auto& Item : AttachedImages)
 	{
 		if (Item.Brush.IsValid())
 		{
+			if (UTexture2D* Texture = Cast<UTexture2D>(Item.Brush->GetResourceObject()))
+			{
+				Texture->RemoveFromRoot();
+			}
 			Item.Brush->ReleaseResource();
 		}
 	}
@@ -62,6 +75,27 @@ void SAttachmentList::AddAttachment(const FString& InBase64, const FString& InIm
 	{
 		FString CacheKey = FString::Printf(TEXT("Attachment_%s"), *ImageId);
 		Texture = OnGetOrCreateDynamicTextureEvent.Execute(InBase64, CacheKey);
+	}
+
+	// 如果没有绑定获取贴图的事件，则在本地自主进行解码，且必须调用 AddToRoot 防止被 GC 机制强制回收而产生马赛克格子
+	if (!Texture)
+	{
+		FString CleanBase64 = InBase64;
+		int32 CommaIdx = -1;
+		if (CleanBase64.FindChar(TEXT(','), CommaIdx))
+		{
+			CleanBase64 = CleanBase64.RightChop(CommaIdx + 1);
+		}
+
+		TArray<uint8> DecodedBytes;
+		if (FBase64::Decode(CleanBase64, DecodedBytes))
+		{
+			Texture = FImageUtils::ImportBufferAsTexture2D(DecodedBytes);
+			if (Texture)
+			{
+				Texture->AddToRoot();
+			}
+		}
 	}
 
 	TSharedPtr<FSlateDynamicImageBrush> Brush = nullptr;
@@ -110,6 +144,10 @@ void SAttachmentList::RemoveAttachmentById(const FString& InImageId)
 		{
 			if (AttachedImages[i].Brush.IsValid())
 			{
+				if (UTexture2D* Texture = Cast<UTexture2D>(AttachedImages[i].Brush->GetResourceObject()))
+				{
+					Texture->RemoveFromRoot();
+				}
 				AttachedImages[i].Brush->ReleaseResource();
 			}
 			OnAttachmentRemovedEvent.ExecuteIfBound(InImageId);

@@ -10,8 +10,11 @@
 #include "Styling/AppStyle.h"
 #include "Misc/DateTime.h"
 
+TWeakPtr<SChatSendButton> SChatSendButton::Instance = nullptr;
+
 void SChatSendButton::Construct(const FArguments& InArgs)
 {
+	Instance = SharedThis(this);
 	OnSendClicked = InArgs._OnSendClicked;
 	OnInterruptClicked = InArgs._OnInterruptClicked;
 

@@ -22,8 +22,11 @@
 #include "FabWindowsClipboard.h"
 #endif
 
+TWeakPtr<SBottomBar> SBottomBar::Instance = nullptr;
+
 void SBottomBar::Construct(const FArguments& InArgs)
 {
+	Instance = SharedThis(this);
 	OnSendClickedEvent = InArgs._OnSendClicked;
 	OnInteractionModeChangedEvent = InArgs._OnInteractionModeChanged;
 	OnToolModeChangedEvent = InArgs._OnToolModeChanged;
@@ -73,18 +76,8 @@ void SBottomBar::Construct(const FArguments& InArgs)
 		[
 			SAssignNew(ChatInput, SChatInput)
 			.OnSendShortcutTriggered(FSimpleDelegate::CreateSP(this, &SBottomBar::OnChatInputSendRequested))
-			.OnPasteShortcutTriggered(FSimpleDelegate::CreateSP(this, &SBottomBar::OnPasteImageFromClipboard))
+			.OnPasteShortcutTriggered(FOnPasteShortcutTriggered::CreateSP(this, &SBottomBar::OnPasteImageFromClipboard))
 			.OnFilesDropped(FOnFilesDropped::CreateSP(this, &SBottomBar::OnFilesDropped))
-			.OnImageTagErased_Lambda([this](int32 ErasedIndex) {
-				if (AttachmentList.IsValid())
-				{
-					const auto& Items = AttachmentList->GetAttachmentItems();
-					if (Items.IsValidIndex(ErasedIndex))
-					{
-						AttachmentList->RemoveAttachmentById(Items[ErasedIndex].ImageId);
-					}
-				}
-			})
 		]
 
 		// 2. 控制工具条 (原子控件拼装)
@@ -149,6 +142,11 @@ void SBottomBar::Construct(const FArguments& InArgs)
 			.Visibility(EVisibility::Collapsed) 
 		]
 	];
+
+	if (ChatInput.IsValid() && AttachmentList.IsValid())
+	{
+		ChatInput->SetAttachmentList(AttachmentList);
+	}
 }
 
 void SBottomBar::OnInteractionModeChanged(const FString& NewMode)
@@ -175,7 +173,7 @@ void SBottomBar::OnChatInputSendRequested()
 	OnSendClickedEvent.ExecuteIfBound();
 }
 
-void SBottomBar::OnPasteImageFromClipboard()
+FReply SBottomBar::OnPasteImageFromClipboard()
 {
 #if PLATFORM_WINDOWS
 	int32 Width, Height;
@@ -187,8 +185,10 @@ void SBottomBar::OnPasteImageFromClipboard()
 		{
 			AttachmentList->AddAttachment(Base64Str);
 		}
+		return FReply::Handled();
 	}
 #endif
+	return FReply::Unhandled();
 }
 
 FReply SBottomBar::OnAddAttachmentClicked()

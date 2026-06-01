@@ -11,6 +11,9 @@
 class CHATWITHUNREAL_API SChatSendButton : public SCompoundWidget
 {
 public:
+	static TWeakPtr<SChatSendButton> Instance;
+
+public:
 	SLATE_BEGIN_ARGS(SChatSendButton) {}
 		SLATE_EVENT(FSimpleDelegate, OnSendClicked)
 		SLATE_EVENT(FSimpleDelegate, OnInterruptClicked)

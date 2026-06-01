@@ -7,27 +7,21 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 
+TWeakPtr<SMessageInteractionHub> SMessageInteractionHub::Instance = nullptr;
+
 void SMessageInteractionHub::Construct(const FArguments& InArgs)
 {
+	Instance = SharedThis(this);
 	OnSessionSelectedEvent = InArgs._OnSessionSelected;
 	OnSessionDeletedEvent = InArgs._OnSessionDeleted;
 
 	ChildSlot
 	[
-		SNew(SOverlay)
-		+ SOverlay::Slot()
-		[
-			SAssignNew(ScrollBoxWidget, SScrollBox)
-			.ScrollBarVisibility(EVisibility::Collapsed)
-			+ SScrollBox::Slot()
-			[
-				SAssignNew(MessageList, SVerticalBox)
-			]
-		]
-		+ SOverlay::Slot()
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
 		[
 			SAssignNew(WelcomeWidget, SChatWelcome)
-			.Visibility(this, &SMessageInteractionHub::GetWelcomeVisibility)
 			.OnSessionSelected_Lambda([this](const FString& SessionId) {
 				OnSessionSelectedEvent.ExecuteIfBound(SessionId);
 			})
@@ -35,49 +29,24 @@ void SMessageInteractionHub::Construct(const FArguments& InArgs)
 				OnSessionDeletedEvent.ExecuteIfBound(SessionId);
 			})
 		]
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
+		[
+			SNew(SBorder)
+			.BorderImage(FAppStyle::Get().GetBrush("ToolPanel.DarkGroupBorder"))
+			.Padding(FMargin(8.0f))
+			[
+				SAssignNew(ScrollBoxWidget, SScrollBox)
+				.ScrollBarVisibility(EVisibility::Collapsed)
+				+ SScrollBox::Slot()
+				[
+					SAssignNew(MessageList, SVerticalBox)
+				]
+			]
+		]
 	];
-}
 
-void SMessageInteractionHub::StartAgentResponse(const FString& AgentName)
-{
-	// 虚拟对话核心：由前端自己决定如何渲染 Agent 消息
-	ActiveResponseGroup = SNew(SAgentResponseGroup).AgentName(AgentName);
-	AddMessageWidget(ActiveResponseGroup.ToSharedRef());
-}
-
-void SMessageInteractionHub::AppendActiveText(const FString& Content)
-{
-	if (ActiveResponseGroup.IsValid())
-	{
-		ActiveResponseGroup->AppendToCurrentTextOutputBlock(Content);
-	}
-}
-
-void SMessageInteractionHub::SetActiveStatus(const FText& Status, bool bShowSpinner, const FLinearColor& Color)
-{
-	if (ActiveResponseGroup.IsValid())
-	{
-		ActiveResponseGroup->SetAgentStatus(Status, bShowSpinner, Color);
-	}
-}
-
-void SMessageInteractionHub::AddUserMessage(const FString& Content, const TArray<FString>& Base64Images)
-{
-	// 虚拟对话核心：由前端决定如何渲染用户消息（目前复用 AgentResponseGroup 但标识为 User）
-	TSharedRef<SAgentResponseGroup> UserMsg = SNew(SAgentResponseGroup).AgentName(TEXT("User"));
-	UserMsg->AppendToCurrentTextOutputBlock(Content);
-	// 如果有图片，后续逻辑可在此扩展
-	AddMessageWidget(UserMsg);
-}
-
-void SMessageInteractionHub::AddSystemNotification(const FString& Content)
-{
-	AddMessageWidget(SNew(SSystemNotificationWidget).MessageText(Content));
-}
-
-void SMessageInteractionHub::OnSessionResumed()
-{
-	ClearMessages();
+	RefreshVisibility();
 }
 
 void SMessageInteractionHub::ClearMessages()
@@ -85,35 +54,36 @@ void SMessageInteractionHub::ClearMessages()
 	if (MessageList.IsValid())
 	{
 		MessageList->ClearChildren();
-		ActiveResponseGroup.Reset();
 		RefreshVisibility();
 	}
 }
 
 void SMessageInteractionHub::RefreshVisibility()
 {
-	bool bHasVisibleMessage = false;
+	bool bHasVisibleMessages = false;
 	if (MessageList.IsValid())
 	{
-		for (int32 i = 0; i < MessageList->GetChildren()->Num(); ++i)
+		FChildren* Children = MessageList->GetChildren();
+		for (int32 i = 0; i < Children->Num(); ++i)
 		{
-			if (MessageList->GetChildren()->GetChildAt(i)->GetVisibility().IsVisible())
+			if (Children->GetChildAt(i)->GetVisibility().IsVisible())
 			{
-				bHasVisibleMessage = true;
+				bHasVisibleMessages = true;
 				break;
 			}
 		}
 	}
-	
-	if (ScrollBoxWidget.IsValid())
-	{
-		ScrollBoxWidget->SetVisibility(bHasVisibleMessage ? EVisibility::Visible : EVisibility::Collapsed);
-	}
-}
 
-EVisibility SMessageInteractionHub::GetWelcomeVisibility() const
-{
-	return (MessageList.IsValid() && MessageList->GetChildren()->Num() > 0) ? EVisibility::Collapsed : EVisibility::Visible;
+	if (bHasVisibleMessages)
+	{
+		if (WelcomeWidget.IsValid()) WelcomeWidget->SetVisibility(EVisibility::Collapsed);
+		if (ScrollBoxWidget.IsValid()) ScrollBoxWidget->SetVisibility(EVisibility::Visible);
+	}
+	else
+	{
+		if (WelcomeWidget.IsValid()) WelcomeWidget->SetVisibility(EVisibility::Visible);
+		if (ScrollBoxWidget.IsValid()) ScrollBoxWidget->SetVisibility(EVisibility::Collapsed);
+	}
 }
 
 void SMessageInteractionHub::AddMessageWidget(TSharedRef<SWidget> InWidget)

@@ -41,23 +41,31 @@ void STopBar::Construct(const FArguments& InArgs)
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
+			.VAlign(VAlign_Center)
 			.Padding(0.0f, 0.0f, 5.0f, 0.0f)
 			[
 				SNew(SButton)
 				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
 				.OnClicked(this, &STopBar::OnShowHistoryClicked)
+				.ContentPadding(FMargin(5.0f))
 				[
-					SNew(SImage).Image(FAppStyle::Get().GetBrush("Icons.Layout"))
+					SNew(SImage)
+					.Image(FAppStyle::Get().GetBrush("Icons.Layout"))
+					.DesiredSizeOverride(FVector2D(16.0f, 16.0f))
 				]
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
+			.VAlign(VAlign_Center)
 			[
 				SNew(SButton)
 				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
 				.OnClicked(this, &STopBar::OnNewConversationClicked)
+				.ContentPadding(FMargin(5.0f))
 				[
-					SNew(SImage).Image(FAppStyle::Get().GetBrush("Icons.Plus"))
+					SNew(SImage)
+					.Image(FAppStyle::Get().GetBrush("Icons.Plus"))
+					.DesiredSizeOverride(FVector2D(16.0f, 16.0f))
 				]
 			]
 		]

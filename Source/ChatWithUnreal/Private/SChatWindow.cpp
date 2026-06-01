@@ -11,12 +11,14 @@
 #include "Widgets/SOverlay.h"
 #include "Editor.h"
 
-SChatWindow::FOnChatWindowConstructed SChatWindow::OnConstructed;
+TWeakPtr<SChatWindow> SChatWindow::Instance = nullptr;
 
 void SChatWindow::Construct(const FArguments& InArgs)
 {
+	Instance = SharedThis(this);
 	OnShowHistoryEvent = InArgs._OnShowHistory;
 	OnNewConversationEvent = InArgs._OnNewConversation;
+	OnSendClickedEvent = InArgs._OnSendClicked;
 
 	ChildSlot
 	[
@@ -42,26 +44,33 @@ void SChatWindow::Construct(const FArguments& InArgs)
 			.AutoHeight()
 			[
 				SAssignNew(ChatInputWidget, SBottomBar)
+				.OnSendClicked(FSimpleDelegate::CreateSP(this, &SChatWindow::OnSendClickedClicked))
 			]
 		]
 	];
-
-	// 动态广播自身，供后端 Subsystem 在运行时动态捕获并进行逻辑绑定
-	OnConstructed.Broadcast(SharedThis(this));
 }
 
 SChatWindow::~SChatWindow()
 {
+	if (Instance.Pin().Get() == this)
+	{
+		Instance = nullptr;
+	}
 }
 
 void SChatWindow::OnShowHistoryClicked()
 {
-	OnShowHistoryEvent.ExecuteIfBound();
+	OnShowHistory.ExecuteIfBound();
 }
 
 void SChatWindow::OnNewConversationClicked()
 {
-	OnNewConversationEvent.ExecuteIfBound();
+	OnNewConversation.ExecuteIfBound();
+}
+
+void SChatWindow::OnSendClickedClicked()
+{
+	OnSendClicked.ExecuteIfBound();
 }
 
 void SChatWindow::OnWelcomeSessionSelected(const FString& SessionId)

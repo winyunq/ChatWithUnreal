@@ -22,12 +22,16 @@ struct FAttachmentItem
 class CHATWITHUNREAL_API SAttachmentList : public SCompoundWidget
 {
 public:
+	static TWeakPtr<SAttachmentList> Instance;
+
+public:
 	SLATE_BEGIN_ARGS(SAttachmentList) {}
 		SLATE_EVENT(FOnAttachmentAdded, OnAttachmentAdded)
 		SLATE_EVENT(FOnAttachmentRemoved, OnAttachmentRemoved)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual ~SAttachmentList();
 
 	void AddAttachment(const FString& Base64, const FString& ImageId = TEXT(""));
 	void RemoveAttachmentById(const FString& ImageId);

@@ -1,5 +1,6 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SChatInput.h"
+#include "SAttachmentList.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
@@ -22,16 +23,17 @@ namespace
 	}
 }
 
+TWeakPtr<SChatInput> SChatInput::Instance = nullptr;
+
 void SChatInput::Construct(const FArguments& InArgs)
 {
+	Instance = SharedThis(this);
 	bIsUpdatingText = false;
 	LastText = TEXT("");
 
 	OnSendShortcutTriggeredEvent = InArgs._OnSendShortcutTriggered;
 	OnPasteShortcutTriggeredEvent = InArgs._OnPasteShortcutTriggered;
 	OnFilesDroppedEvent = InArgs._OnFilesDropped;
-	OnImageTagErasedEvent = InArgs._OnImageTagErased;
-	OnAllImageTagsErasedEvent = InArgs._OnAllImageTagsErased;
 
 	ChildSlot
 	[
@@ -123,8 +125,11 @@ FReply SChatInput::OnInputKeyDown(const FGeometry& MyGeometry, const FKeyEvent& 
 	{
 		if (OnPasteShortcutTriggeredEvent.IsBound())
 		{
-			OnPasteShortcutTriggeredEvent.Execute();
-			return FReply::Handled();
+			FReply Reply = OnPasteShortcutTriggeredEvent.Execute();
+			if (Reply.IsEventHandled())
+			{
+				return Reply;
+			}
 		}
 	}
 
@@ -191,61 +196,80 @@ void SChatInput::InsertImageTag(const FString& InImageId)
 	}
 }
 
+void SChatInput::SetAttachmentList(TSharedPtr<SAttachmentList> InList)
+{
+	AttachmentListWidget = InList;
+}
+
 void SChatInput::HandleTextChanged(const FText& NewText)
 {
 	if (bIsUpdatingText) return;
 
 	FString NewTextStr = NewText.ToString();
 
-	// 1. 分别统计旧文本和新文本中的 ◆ 数量及物理索引位置
-	TArray<int32> OldTokenIndices;
-	TArray<int32> NewTokenIndices;
-
-	for (int32 i = 0; i < LastText.Len(); ++i)
+	TSharedPtr<SAttachmentList> AttList = AttachmentListWidget.Pin();
+	if (AttList.IsValid())
 	{
-		if (LastText[i] == 0x25C6) // ◆
-		{
-			OldTokenIndices.Add(i);
-		}
-	}
+		// 1. 分别统计旧文本和新文本中的 ◆ 数量及物理索引位置
+		TArray<int32> OldTokenIndices;
+		TArray<int32> NewTokenIndices;
 
-	for (int32 i = 0; i < NewTextStr.Len(); ++i)
-	{
-		if (NewTextStr[i] == 0x25C6) // ◆
+		for (int32 i = 0; i < LastText.Len(); ++i)
 		{
-			NewTokenIndices.Add(i);
-		}
-	}
-
-	// 2. 如果占位符数量减少了，代表用户通过打字编辑（如 Backspace 等）物理删除了占位符！
-	if (NewTokenIndices.Num() < OldTokenIndices.Num())
-	{
-		if (NewTokenIndices.Num() == 0)
-		{
-			OnAllImageTagsErasedEvent.ExecuteIfBound();
-		}
-		else
-		{
-			// 用前缀上下文比对算法，精准找出是哪个占位符被干掉了
-			int32 ErasedIndex = -1;
-			for (int32 i = 0; i < NewTokenIndices.Num(); ++i)
+			if (LastText[i] == 0x25C6) // ◆
 			{
-				FString NewPrefix = NewTextStr.Left(NewTokenIndices[i]).Replace(TEXT("◆"), TEXT(""));
-				FString OldPrefix = LastText.Left(OldTokenIndices[i]).Replace(TEXT("◆"), TEXT(""));
+				OldTokenIndices.Add(i);
+			}
+		}
 
-				if (NewPrefix != OldPrefix)
+		for (int32 i = 0; i < NewTextStr.Len(); ++i)
+		{
+			if (NewTextStr[i] == 0x25C6) // ◆
+			{
+				NewTokenIndices.Add(i);
+			}
+		}
+
+		const TArray<FAttachmentItem>& Items = AttList->GetAttachmentItems();
+
+		// 2. 如果占位符数量减少了，代表用户通过打字编辑（如 Backspace 等）物理删除了占位符！
+		if (NewTokenIndices.Num() < OldTokenIndices.Num() && Items.Num() > 0)
+		{
+			if (NewTokenIndices.Num() == 0)
+			{
+				bIsUpdatingText = true;
+				AttList->ClearAttachments();
+				bIsUpdatingText = false;
+			}
+			else
+			{
+				// 用前缀上下文比对算法，精准找出是哪个占位符被干掉了
+				int32 ErasedIndex = -1;
+				for (int32 i = 0; i < NewTokenIndices.Num(); ++i)
 				{
-					ErasedIndex = i;
-					break;
+					FString NewPrefix = NewTextStr.Left(NewTokenIndices[i]).Replace(TEXT("◆"), TEXT(""));
+					FString OldPrefix = LastText.Left(OldTokenIndices[i]).Replace(TEXT("◆"), TEXT(""));
+
+					if (NewPrefix != OldPrefix)
+					{
+						ErasedIndex = i;
+						break;
+					}
+				}
+
+				if (ErasedIndex == -1)
+				{
+					ErasedIndex = OldTokenIndices.Num() - 1;
+				}
+
+				// 双向联动：反向将对应的图片从附录中剔除销毁，实现完美的闭环状态一致性
+				if (ErasedIndex >= 0 && ErasedIndex < Items.Num())
+				{
+					bIsUpdatingText = true;
+					AttList->RemoveAttachmentById(Items[ErasedIndex].ImageId);
+					bIsUpdatingText = false;
 				}
 			}
-
-			if (ErasedIndex == -1)
-			{
-				ErasedIndex = OldTokenIndices.Num() - 1;
-			}
-
-			OnImageTagErasedEvent.ExecuteIfBound(ErasedIndex);
 		}
 	}
 

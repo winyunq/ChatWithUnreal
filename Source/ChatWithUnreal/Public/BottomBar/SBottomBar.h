@@ -22,6 +22,9 @@ DECLARE_DELEGATE_OneParam(FOnBottomBarToolModeChanged, const FString& /*NewTool*
 class CHATWITHUNREAL_API SBottomBar : public SCompoundWidget
 {
 public:
+	static TWeakPtr<SBottomBar> Instance;
+
+public:
 	SLATE_BEGIN_ARGS(SBottomBar) {}
 		SLATE_EVENT(FSimpleDelegate, OnSendClicked)
 		SLATE_EVENT(FOnBottomBarInteractionModeChanged, OnInteractionModeChanged)
@@ -44,7 +47,7 @@ private:
 	void OnToolModeChanged(const FString& NewTool);
 	FString GetInteractionMode() const;
 	void OnChatInputSendRequested();
-	void OnPasteImageFromClipboard();
+	FReply OnPasteImageFromClipboard();
 	FReply OnAddAttachmentClicked();
 	void OnFilesDropped(const TArray<FString>& Files);
 

@@ -127,6 +127,7 @@ void SUserMessageWidget::Construct(const FArguments& InArgs)
 
 			if (Texture)
 			{
+				Texture->AddToRoot();
 				float W = Texture->GetSizeX();
 				float H = Texture->GetSizeY();
 
@@ -272,6 +273,10 @@ SUserMessageWidget::~SUserMessageWidget()
 	{
 		if (Brush.IsValid())
 		{
+			if (UTexture2D* Texture = Cast<UTexture2D>(Brush->GetResourceObject()))
+			{
+				Texture->RemoveFromRoot();
+			}
 			Brush->ReleaseResource();
 		}
 	}
