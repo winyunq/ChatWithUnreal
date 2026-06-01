@@ -28,6 +28,7 @@ void SBottomBar::Construct(const FArguments& InArgs)
 {
 	Instance = SharedThis(this);
 	OnSendClickedEvent = InArgs._OnSendClicked;
+	OnInterruptClickedEvent = InArgs._OnInterruptClicked;
 	OnInteractionModeChangedEvent = InArgs._OnInteractionModeChanged;
 	OnToolModeChangedEvent = InArgs._OnToolModeChanged;
 
@@ -122,13 +123,13 @@ void SBottomBar::Construct(const FArguments& InArgs)
 				[
 					SNew(SImage)
 					.Image(FAppStyle::Get().GetBrush("Icons.Plus"))
-				]
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
 			[
 				SAssignNew(SendButton, SChatSendButton)
 				.OnSendClicked(FSimpleDelegate::CreateSP(this, &SBottomBar::OnChatInputSendRequested))
+				.OnInterruptClicked(OnInterruptClickedEvent)
 			]
 		]
 

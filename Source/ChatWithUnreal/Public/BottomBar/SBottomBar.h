@@ -27,6 +27,7 @@ public:
 public:
 	SLATE_BEGIN_ARGS(SBottomBar) {}
 		SLATE_EVENT(FSimpleDelegate, OnSendClicked)
+		SLATE_EVENT(FSimpleDelegate, OnInterruptClicked)
 		SLATE_EVENT(FOnBottomBarInteractionModeChanged, OnInteractionModeChanged)
 		SLATE_EVENT(FOnBottomBarToolModeChanged, OnToolModeChanged)
 	SLATE_END_ARGS()
@@ -52,6 +53,7 @@ private:
 	void OnFilesDropped(const TArray<FString>& Files);
 
 	FSimpleDelegate OnSendClickedEvent;
+	FSimpleDelegate OnInterruptClickedEvent;
 	FOnBottomBarInteractionModeChanged OnInteractionModeChangedEvent;
 	FOnBottomBarToolModeChanged OnToolModeChangedEvent;
 };

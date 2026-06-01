@@ -10,6 +10,8 @@ class SChatWelcome;
 class SMessageInteractionHub;
 class SBottomBar;
 
+DECLARE_DELEGATE_OneParam(FOnChatWindowInteractionModeChanged, const FString& /*NewMode*/);
+
 class CHATWITHUNREAL_API SChatWindow : public SCompoundWidget
 {
 public:
@@ -28,12 +30,16 @@ public:
 	FSimpleDelegate OnShowHistory;
 	FSimpleDelegate OnNewConversation;
 	FSimpleDelegate OnSendClicked;
+	FSimpleDelegate OnInterruptClicked;
+	FOnChatWindowInteractionModeChanged OnInteractionModeChanged;
 
 private:
 	void OnShowHistoryClicked();
 	void OnNewConversationClicked();
 	void OnWelcomeSessionSelected(const FString& SessionId);
 	void OnSendClickedClicked();
+	void OnInterruptClickedClicked();
+	void OnInteractionModeChangedClicked(const FString& NewMode);
 
 	TSharedPtr<STopBar> TopBarWidget;
 	TSharedPtr<SMessageInteractionHub> MessageHubWidget;

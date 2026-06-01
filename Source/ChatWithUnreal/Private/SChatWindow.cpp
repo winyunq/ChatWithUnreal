@@ -45,6 +45,8 @@ void SChatWindow::Construct(const FArguments& InArgs)
 			[
 				SAssignNew(ChatInputWidget, SBottomBar)
 				.OnSendClicked(FSimpleDelegate::CreateSP(this, &SChatWindow::OnSendClickedClicked))
+				.OnInterruptClicked(FSimpleDelegate::CreateSP(this, &SChatWindow::OnInterruptClickedClicked))
+				.OnInteractionModeChanged(FOnBottomBarInteractionModeChanged::CreateSP(this, &SChatWindow::OnInteractionModeChangedClicked))
 			]
 		]
 	];
@@ -71,6 +73,16 @@ void SChatWindow::OnNewConversationClicked()
 void SChatWindow::OnSendClickedClicked()
 {
 	OnSendClicked.ExecuteIfBound();
+}
+
+void SChatWindow::OnInterruptClickedClicked()
+{
+	OnInterruptClicked.ExecuteIfBound();
+}
+
+void SChatWindow::OnInteractionModeChangedClicked(const FString& NewMode)
+{
+	OnInteractionModeChanged.ExecuteIfBound(NewMode);
 }
 
 void SChatWindow::OnWelcomeSessionSelected(const FString& SessionId)
