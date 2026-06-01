@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SAgentResponseGroup.h"
 #include "SAgentAvatar.h"
+#include "ChatWithUnrealStyle.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -193,13 +194,7 @@ namespace
 
 		virtual bool Supports(const FTextRunParseResults& RunParseResults, const FString& Text) const override
 		{
-			const FString& TagName = RunParseResults.Name;
-			return TagName.Equals(TEXT("b"), ESearchCase::IgnoreCase) ||
-				   TagName.Equals(TEXT("i"), ESearchCase::IgnoreCase) ||
-				   TagName.Equals(TEXT("bi"), ESearchCase::IgnoreCase) ||
-				   TagName.Equals(TEXT("code"), ESearchCase::IgnoreCase) ||
-				   TagName.Equals(TEXT("quote"), ESearchCase::IgnoreCase) ||
-				   TagName.StartsWith(TEXT("h"), ESearchCase::IgnoreCase);
+			return StyleSet && StyleSet->HasWidgetStyle<FTextBlockStyle>(FName(*RunParseResults.Name));
 		}
 
 		virtual TSharedRef<ISlateRun> Create(const TSharedRef<class FTextLayout>& TextLayout, const FTextRunParseResults& RunParseResults, const FString& OriginalText, const TSharedRef<FString>& InOutModelText, const ISlateStyle* InStyleSet) override
@@ -212,53 +207,8 @@ namespace
 
 			ModelRange.EndIndex = InOutModelText->Len();
 
-			FTextBlockStyle Style = InStyleSet->GetWidgetStyle<FTextBlockStyle>(TEXT("NormalText"));
-			
-			const FString& TagName = RunParseResults.Name;
-			FSlateFontInfo ModifiedFont = Style.Font;
-
-			if (TagName.Equals(TEXT("b"), ESearchCase::IgnoreCase))
-			{
-				ModifiedFont.TypefaceFontName = TEXT("Bold");
-			}
-			else if (TagName.Equals(TEXT("i"), ESearchCase::IgnoreCase))
-			{
-				ModifiedFont.TypefaceFontName = TEXT("Italic");
-			}
-			else if (TagName.Equals(TEXT("bi"), ESearchCase::IgnoreCase))
-			{
-				ModifiedFont.TypefaceFontName = TEXT("BoldItalic");
-			}
-			else if (TagName.Equals(TEXT("code"), ESearchCase::IgnoreCase))
-			{
-				ModifiedFont.TypefaceFontName = TEXT("Monospace");
-				ModifiedFont.Size = Style.Font.Size - 1.0f;
-				Style.SetColorAndOpacity(FLinearColor(0.85f, 0.4f, 0.4f, 1.0f));
-			}
-			else if (TagName.Equals(TEXT("quote"), ESearchCase::IgnoreCase))
-			{
-				ModifiedFont.TypefaceFontName = TEXT("Italic");
-				Style.SetColorAndOpacity(FLinearColor(0.55f, 0.55f, 0.6f, 1.0f));
-			}
-			else if (TagName.StartsWith(TEXT("h"), ESearchCase::IgnoreCase))
-			{
-				ModifiedFont.TypefaceFontName = TEXT("Bold");
-				int32 Level = 1;
-				if (TagName.Len() > 1)
-				{
-					Level = FCString::Valatoi(*TagName.Right(1));
-				}
-				
-				if (Level == 1) ModifiedFont.Size = Style.Font.Size + 6.0f;
-				else if (Level == 2) ModifiedFont.Size = Style.Font.Size + 4.0f;
-				else if (Level == 3) ModifiedFont.Size = Style.Font.Size + 3.0f;
-				else if (Level == 4) ModifiedFont.Size = Style.Font.Size + 2.0f;
-				else ModifiedFont.Size = Style.Font.Size + 1.0f;
-
-				Style.SetColorAndOpacity(FLinearColor(0.9f, 0.9f, 0.95f, 1.0f));
-			}
-
-			Style.SetFont(ModifiedFont);
+			// 物理直接从指定的 InStyleSet 中获取对应 Tag 名字的富文本样式
+			FTextBlockStyle Style = InStyleSet->GetWidgetStyle<FTextBlockStyle>(FName(*RunParseResults.Name));
 
 			FRunInfo RunInfo;
 			RunInfo.Name = RunParseResults.Name;
@@ -270,8 +220,6 @@ namespace
 				RunInfo.MetaData.Add(MetaPair.Key, MetaValue);
 			}
 
-			// 4. 返回创建的 Run
-			// 需要确保包含了 #include "Framework/Text/SlateTextRun.h"
 			TSharedRef<const FString> ConstModelText = InOutModelText;
 			return FSlateTextRun::Create(RunInfo, ConstModelText, Style, ModelRange);
 		}
@@ -381,20 +329,19 @@ void SAgentResponseGroup::AddTextOutputBlock(const FString& NewText)
 		ActiveTextBlock.Reset();
 
 		TArray<TSharedRef<class ITextDecorator>> Decorators;
-		Decorators.Add(FSimpleRichTextDecorator::Create(&FAppStyle::Get()));
+		Decorators.Add(FSimpleRichTextDecorator::Create(&FChatWithUnrealStyle::Get()));
 
 		TurnContentBox->AddSlot()
 		.AutoHeight()
 		.Padding(0.0f, 2.0f, 0.0f, 6.0f)
 		[
-			// 使用 SBox 辅助 SRichTextBlock 确定换行边界
 			SAssignNew(ActiveTextBlock, SRichTextBlock)
 			.Text(FText::FromString(ConvertMarkdownToRichText(NewText)))
-			.TextStyle(&FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
-			.DecoratorStyleSet(&FAppStyle::Get())
+			.TextStyle(&FChatWithUnrealStyle::Get().GetWidgetStyle<FTextBlockStyle>("default"))
+			.DecoratorStyleSet(&FChatWithUnrealStyle::Get())
 			.Decorators(Decorators)
 			.AutoWrapText(true)
-			.WrapTextAt(0.0f) // 0.0f 表示让 SRichTextBlock 自动根据容器宽度换行
+			.WrapTextAt(0.0f)
 		];
 	}
 }
