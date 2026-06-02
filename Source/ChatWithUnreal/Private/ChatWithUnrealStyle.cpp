@@ -4,6 +4,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Interfaces/IPluginManager.h"
 #include "Styling/SlateStyle.h"
+#include "Styling/CoreStyle.h"
 
 TSharedPtr< FSlateStyleSet > FChatWithUnrealStyle::StyleInstance = nullptr;
 
@@ -59,28 +60,29 @@ TSharedRef< FSlateStyleSet > FChatWithUnrealStyle::Realize()
 	// 基础正文
 	FTextBlockStyle RichNormal = NormalText;
 	RichNormal.SetFontSize(10);
-	RichNormal.SetColorAndOpacity(FLinearColor::White);
+	RichNormal.SetColorAndOpacity(FLinearColor(0.82f, 0.82f, 0.85f, 1.0f)); // 雅致微灰柔和正文
 	Style->Set("default", RichNormal); 
 
 	// 加粗 (b)
 	FTextBlockStyle BoldText = RichNormal;
-	BoldText.Font.TypefaceFontName = TEXT("Bold");
+	BoldText.SetFont(FCoreStyle::GetDefaultFontStyle("Bold", 10));
+	BoldText.SetColorAndOpacity(FLinearColor::White); // 耀眼纯白，拉开明暗视觉对比
 	Style->Set("b", BoldText);
 
 	// 斜体 (i)
 	FTextBlockStyle ItalicText = RichNormal;
-	ItalicText.Font.TypefaceFontName = TEXT("Italic");
+	ItalicText.SetFont(FCoreStyle::GetDefaultFontStyle("Italic", 10));
 	Style->Set("i", ItalicText);
 
 	// 粗斜体 (bi)
 	FTextBlockStyle BoldItalicText = RichNormal;
-	BoldItalicText.Font.TypefaceFontName = TEXT("BoldItalic");
+	BoldItalicText.SetFont(FCoreStyle::GetDefaultFontStyle("BoldItalic", 10));
+	BoldItalicText.SetColorAndOpacity(FLinearColor::White);
 	Style->Set("bi", BoldItalicText);
 
 	// 代码块 (code)
 	FTextBlockStyle CodeText = RichNormal;
-	CodeText.Font.TypefaceFontName = TEXT("Mono");
-	CodeText.Font.Size = RichNormal.Font.Size - 1.0f;
+	CodeText.SetFont(FCoreStyle::GetDefaultFontStyle("Mono", 9));
 	CodeText.SetColorAndOpacity(FLinearColor(0.4f, 0.8f, 1.0f)); 
 	Style->Set("code", CodeText);
 
