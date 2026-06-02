@@ -32,7 +32,7 @@ void SMessageInteractionHub::Construct(const FArguments& InArgs)
 		+ SVerticalBox::Slot()
 		.FillHeight(1.0f)
 		[
-			SNew(SBorder)
+			SAssignNew(MessageListBorder, SBorder)
 			.BorderImage(FAppStyle::Get().GetBrush("ToolPanel.DarkGroupBorder"))
 			.Padding(FMargin(8.0f))
 			[
@@ -77,12 +77,12 @@ void SMessageInteractionHub::RefreshVisibility()
 	if (bHasVisibleMessages)
 	{
 		if (WelcomeWidget.IsValid()) WelcomeWidget->SetVisibility(EVisibility::Collapsed);
-		if (ScrollBoxWidget.IsValid()) ScrollBoxWidget->SetVisibility(EVisibility::Visible);
+		if (MessageListBorder.IsValid()) MessageListBorder->SetVisibility(EVisibility::Visible);
 	}
 	else
 	{
 		if (WelcomeWidget.IsValid()) WelcomeWidget->SetVisibility(EVisibility::Visible);
-		if (ScrollBoxWidget.IsValid()) ScrollBoxWidget->SetVisibility(EVisibility::Collapsed);
+		if (MessageListBorder.IsValid()) MessageListBorder->SetVisibility(EVisibility::Collapsed);
 	}
 }
 

@@ -87,7 +87,7 @@ void SChatWelcome::Construct(const FArguments& InArgs)
 				]
 			]
 
-			// 引导提示
+			// 3. 引导提示
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			.HAlign(HAlign_Center)
@@ -102,7 +102,7 @@ void SChatWelcome::Construct(const FArguments& InArgs)
 				.Justification(ETextJustify::Center)
 			]
 
-			// 操作区
+			// 4. 操作区 (0.4/0.6 水平分栏)
 			+ SVerticalBox::Slot()
 			.FillHeight(1.0f)
 			[
@@ -177,6 +177,8 @@ void SChatWelcome::AddHistoryItem(const FString& SessionId, const FString& Title
 {
 	if (!HistoryListBox.IsValid()) return;
 
+	FString LocalSessionId = SessionId;
+
 	HistoryListBox->AddSlot()
 	.AutoHeight()
 	.Padding(FMargin(0.0f, 2.0f))
@@ -187,8 +189,8 @@ void SChatWelcome::AddHistoryItem(const FString& SessionId, const FString& Title
 		[
 			SNew(SButton)
 			.ButtonStyle(FAppStyle::Get(), "FlatButton")
-			.OnClicked_Lambda([this, SessionId]() {
-				OnHistoryItemSelected(SessionId);
+			.OnClicked_Lambda([this, LocalSessionId]() {
+				OnHistoryItemSelected(LocalSessionId);
 				return FReply::Handled();
 			})
 			[
@@ -230,8 +232,8 @@ void SChatWelcome::AddHistoryItem(const FString& SessionId, const FString& Title
 				[
 					SNew(SButton)
 					.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
-					.OnClicked_Lambda([this, SessionId]() {
-						OnHistoryItemDeleted(SessionId);
+					.OnClicked_Lambda([this, LocalSessionId]() {
+						OnHistoryItemDeleted(LocalSessionId);
 						return FReply::Handled();
 					})
 					.ToolTipText(FText::FromString(TEXT("Delete this conversation")))

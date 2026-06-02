@@ -52,4 +52,5 @@ private:
 
 	TSharedPtr<SVerticalBox> MessageList;
 	TSharedPtr<SScrollBox> ScrollBoxWidget;
+	TSharedPtr<class SBorder> MessageListBorder;
 };

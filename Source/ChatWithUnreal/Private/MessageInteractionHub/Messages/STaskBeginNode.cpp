@@ -52,10 +52,13 @@ namespace
 
 void STaskBeginNode::Construct(const FArguments& InArgs)
 {
+	TaskId = InArgs._TaskId;
 	InitiatorAgent = InArgs._InitiatorAgent;
 	ReceiverAgent = InArgs._ReceiverAgent;
 	TargetAsset = InArgs._TargetAsset;
 	Items = InArgs._Items;
+	OnAccepted = InArgs._OnAccepted;
+	OnRejected = InArgs._OnRejected;
 	ItemFeedbacks.Init(FString(), Items.Num());
 
 	TSharedPtr<SVerticalBox> ItemsHost;
@@ -135,7 +138,7 @@ void STaskBeginNode::Construct(const FArguments& InArgs)
 					SNew(SButton)
 					.Text(FText::FromString(GetLocString(TEXT("Accept"), TEXT("同意"))))
 					.ButtonStyle(FAppStyle::Get(), "PrimaryButton")
-					// .OnClicked ... Accept task trigger
+					.OnClicked(this, &STaskBeginNode::OnAcceptClicked)
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
@@ -143,7 +146,7 @@ void STaskBeginNode::Construct(const FArguments& InArgs)
 					SNew(SButton)
 					.Text(FText::FromString(GetLocString(TEXT("Reject"), TEXT("拒绝"))))
 					.ButtonStyle(FAppStyle::Get(), "Button")
-					// .OnClicked ... Reject task trigger
+					.OnClicked(this, &STaskBeginNode::OnRejectClicked)
 				]
 			]
 		]
@@ -217,4 +220,14 @@ FString STaskBeginNode::FormatTaskItemSingleLine(const FString& InText)
 	return Out.TrimStartAndEnd();
 }
 
-// Removed member func BuildAgentBadge
+FReply STaskBeginNode::OnAcceptClicked()
+{
+	OnAccepted.ExecuteIfBound();
+	return FReply::Handled();
+}
+
+FReply STaskBeginNode::OnRejectClicked()
+{
+	OnRejected.ExecuteIfBound();
+	return FReply::Handled();
+}

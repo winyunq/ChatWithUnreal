@@ -34,6 +34,8 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
+	FString GetInteractionMode() const;
+
 	// 原子微控件
 	TSharedPtr<SAbilitiesSelector> AbilitiesSelector;
 	TSharedPtr<SChatInput> ChatInput;
@@ -46,7 +48,6 @@ public:
 private:
 	void OnInteractionModeChanged(const FString& NewMode);
 	void OnToolModeChanged(const FString& NewTool);
-	FString GetInteractionMode() const;
 	void OnChatInputSendRequested();
 	FReply OnPasteImageFromClipboard();
 	FReply OnAddAttachmentClicked();
