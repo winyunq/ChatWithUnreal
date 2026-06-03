@@ -13,11 +13,16 @@ public:
 		SLATE_ARGUMENT(FString, ReceiverAgent)
 		SLATE_ARGUMENT(FString, TargetAsset)
 		SLATE_ARGUMENT(TArray<FString>, Items)
+		SLATE_ARGUMENT(FString, Status)
 		SLATE_EVENT(FSimpleDelegate, OnAccepted)
 		SLATE_EVENT(FSimpleDelegate, OnRejected)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
+	void SetOnAccepted(const FSimpleDelegate& InDelegate) { OnAccepted = InDelegate; }
+	void SetOnRejected(const FSimpleDelegate& InDelegate) { OnRejected = InDelegate; }
+	void SetTargetAsset(const FString& InTargetAsset);
 
 private:
 	FString TaskId;
@@ -26,12 +31,20 @@ private:
 	FString TargetAsset;
 	TArray<FString> Items;
 	TArray<FString> ItemFeedbacks;
+	FString Status;
 	FSimpleDelegate OnAccepted;
 	FSimpleDelegate OnRejected;
 
+	FText GetTargetAssetHyperlinkText() const;
+
 	FReply OnAcceptClicked();
 	FReply OnRejectClicked();
+	void OnHyperlinkNavigate();
 
-	// TSharedRef<SWidget> BuildAgentBadge(const FString& InAgentName);
+	EVisibility GetAcceptButtonVisibility() const;
+	EVisibility GetStatusTextVisibility() const;
+	FText GetStatusText() const;
+	FSlateColor GetStatusTextColor() const;
+
 	FString FormatTaskItemSingleLine(const FString& InText);
 };
