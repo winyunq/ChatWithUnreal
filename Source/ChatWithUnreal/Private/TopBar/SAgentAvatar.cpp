@@ -17,7 +17,31 @@ namespace
 void SAgentAvatar::Construct(const FArguments& InArgs)
 {
 	AgentName = InArgs._AgentName;
-	SourceBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.ChatAvatar");
+	
+	const FSlateBrush* TargetBrush = nullptr;
+	if (AgentName.Equals(TEXT("Layout"), ESearchCase::IgnoreCase))
+	{
+		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Layout");
+	}
+	else if (AgentName.Equals(TEXT("Material"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("GlobalMaterial"), ESearchCase::IgnoreCase))
+	{
+		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Material");
+	}
+	else if (AgentName.Equals(TEXT("Sequence"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("AnimationSequence"), ESearchCase::IgnoreCase))
+	{
+		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Sequence");
+	}
+	else if (AgentName.Equals(TEXT("Widget"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("Umg"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("GlobalUmg"), ESearchCase::IgnoreCase))
+	{
+		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Widget");
+	}
+	
+	if (!TargetBrush)
+	{
+		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
+	}
+
+	SourceBrush = TargetBrush;
 	SAvatar::Construct(SAvatar::FArguments());
 }
 

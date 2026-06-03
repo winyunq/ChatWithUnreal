@@ -53,6 +53,11 @@ TSharedRef< FSlateStyleSet > FChatWithUnrealStyle::Realize()
 	// 统一映射：资源路径自愈
 	Style->Set("ChatWithUnreal.PluginIcon", new IMAGE_BRUSH(TEXT("Icon128"), FVector2D(128.0f, 128.0f)));
 	Style->Set("ChatWithUnreal.ChatAvatar", new IMAGE_BRUSH(TEXT("Icon/Agent"), FVector2D(40.0f, 40.0f)));
+	Style->Set("ChatWithUnreal.Agent.Layout", new IMAGE_BRUSH(TEXT("Icon/layout"), FVector2D(40.0f, 40.0f)));
+	Style->Set("ChatWithUnreal.Agent.Material", new IMAGE_BRUSH(TEXT("Icon/material"), FVector2D(40.0f, 40.0f)));
+	Style->Set("ChatWithUnreal.Agent.Sequence", new IMAGE_BRUSH(TEXT("Icon/sequence"), FVector2D(40.0f, 40.0f)));
+	Style->Set("ChatWithUnreal.Agent.Widget", new IMAGE_BRUSH(TEXT("Icon/widget"), FVector2D(40.0f, 40.0f)));
+	Style->Set("ChatWithUnreal.Agent.Agent", new IMAGE_BRUSH(TEXT("Icon/Agent"), FVector2D(40.0f, 40.0f)));
 
 		// --- 统一富文本样式注册 (FChatWithUnrealStyle 独有) ---
 	const FTextBlockStyle& NormalText = FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText");
