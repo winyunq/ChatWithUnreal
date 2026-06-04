@@ -19,7 +19,6 @@ void SAtAgentMessage::Construct(const FArguments& InArgs)
 {
 	Instance = SharedThis(this);
 	OnClearClickedEvent = InArgs._OnClearClicked;
-	OnAgentSelectedEvent = InArgs._OnAgentSelected;
 	OnGetAgentAvatarEvent = InArgs._OnGetAgentAvatar;
 	
 	// 初始状态默认为折叠
@@ -49,40 +48,22 @@ void SAtAgentMessage::Construct(const FArguments& InArgs)
 					.AutoWidth()
 					.VAlign(VAlign_Center)
 					[
-						SNew(SButton)
-						.ButtonStyle(FAppStyle::Get(), "NoBorder")
-						.ContentPadding(0.0f)
-						.OnClicked_Lambda([this]() {
-							if (auto ChatInput = SChatInput::Instance.Pin())
-							{
-								ChatInput->OnAtAgentTriggeredEvent.ExecuteIfBound(TEXT(""));
-							}
-							return FReply::Handled();
-						})
+						SNew(SBox)
+						.WidthOverride(16.0f)
+						.HeightOverride(16.0f)
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.VAlign(VAlign_Center)
-							[
-								SNew(SBox)
-								.WidthOverride(16.0f)
-								.HeightOverride(16.0f)
-								[
-									SNew(SImage)
-									.Image_Lambda([this]() { return AgentBrush; })
-								]
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.VAlign(VAlign_Center)
-							.Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
-							[
-								SNew(STextBlock)
-								.Text_Lambda([this]() { return FText::FromString(TEXT("@") + AgentName); })
-								.Font(FAppStyle::Get().GetFontStyle("BoldFont"))
-							]
+							SNew(SImage)
+							.Image_Lambda([this]() { return AgentBrush; })
 						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
+					[
+						SNew(STextBlock)
+						.Text_Lambda([this]() { return FText::FromString(TEXT("@") + AgentName); })
+						.Font(FAppStyle::Get().GetFontStyle("BoldFont"))
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
@@ -243,8 +224,31 @@ void SAtAgentMessage::OnAgentSelected(TSharedPtr<FString> SelectedAgent, ESelect
 		AgentMenuAnchor->SetIsOpen(false);
 	}
 
-	if (OnAgentSelectedEvent.IsBound())
+	const FSlateBrush* Brush = nullptr;
+	if (OnGetAgentAvatarEvent.IsBound())
 	{
-		OnAgentSelectedEvent.Execute(*SelectedAgent);
+		Brush = OnGetAgentAvatarEvent.Execute(*SelectedAgent);
+	}
+	else
+	{
+		Brush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + *SelectedAgent)), nullptr, nullptr);
+		if (!Brush)
+		{
+			Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
+		}
+	}
+
+	UpdateAgent(*SelectedAgent, Brush);
+
+	if (auto ChatInput = SChatInput::Instance.Pin())
+	{
+		FString CurrentText = ChatInput->GetText().ToString();
+		int32 AtIndex = INDEX_NONE;
+		if (CurrentText.FindLastChar(TEXT('@'), AtIndex))
+		{
+			CurrentText.LeftInline(AtIndex);
+		}
+		ChatInput->SetText(FText::FromString(CurrentText));
+		ChatInput->FocusInput();
 	}
 }

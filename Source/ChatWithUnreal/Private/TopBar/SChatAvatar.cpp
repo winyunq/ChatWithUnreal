@@ -38,6 +38,15 @@ const FSlateBrush* SAvatar::GetSourceBrush() const
 const FSlateBrush* SAvatar::GetAvatarBrush() const
 {
 	const FSlateBrush* EffectiveSource = GetSourceBrush();
+	if (!EffectiveSource)
+	{
+		EffectiveSource = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
+	}
+
+	if (!EffectiveSource)
+	{
+		return nullptr;
+	}
 
 	if (!CachedRoundedAvatarBrush.IsValid())
 	{

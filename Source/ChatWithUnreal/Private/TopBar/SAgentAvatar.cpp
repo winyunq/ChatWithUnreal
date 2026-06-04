@@ -3,8 +3,8 @@
 #include "ChatWithUnrealStyle.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Internationalization/Culture.h"
-#include "Internationalization/Internationalization.h"
 #include "BottomBar/SAtAgentMessage.h"
+#include "BottomBar/SChatInput.h"
 
 namespace
 {
@@ -19,24 +19,7 @@ void SAgentAvatar::Construct(const FArguments& InArgs)
 {
 	AgentName = InArgs._AgentName;
 	
-	const FSlateBrush* TargetBrush = nullptr;
-	if (AgentName.Equals(TEXT("Layout"), ESearchCase::IgnoreCase))
-	{
-		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Layout");
-	}
-	else if (AgentName.Equals(TEXT("Material"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("GlobalMaterial"), ESearchCase::IgnoreCase))
-	{
-		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Material");
-	}
-	else if (AgentName.Equals(TEXT("Sequence"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("AnimationSequence"), ESearchCase::IgnoreCase))
-	{
-		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Sequence");
-	}
-	else if (AgentName.Equals(TEXT("Widget"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("Umg"), ESearchCase::IgnoreCase) || AgentName.Equals(TEXT("GlobalUmg"), ESearchCase::IgnoreCase))
-	{
-		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Widget");
-	}
-	
+	const FSlateBrush* TargetBrush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + AgentName)), nullptr, nullptr);
 	if (!TargetBrush)
 	{
 		TargetBrush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
@@ -66,10 +49,32 @@ TSharedRef<SWidget> SAgentAvatar::OnGetMenuContent()
 				
 				if (auto AtAgentMsg = SAtAgentMessage::Instance.Pin())
 				{
-					if (AtAgentMsg->OnAgentSelectedEvent.IsBound())
+					const FSlateBrush* Brush = nullptr;
+					if (AtAgentMsg->OnGetAgentAvatarEvent.IsBound())
 					{
-						AtAgentMsg->OnAgentSelectedEvent.Execute(CleanAgentName);
+						Brush = AtAgentMsg->OnGetAgentAvatarEvent.Execute(CleanAgentName);
 					}
+					else
+					{
+						Brush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + CleanAgentName)), nullptr, nullptr);
+						if (!Brush)
+						{
+							Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
+						}
+					}
+					AtAgentMsg->UpdateAgent(CleanAgentName, Brush);
+				}
+
+				if (auto ChatInput = SChatInput::Instance.Pin())
+				{
+					FString CurrentText = ChatInput->GetText().ToString();
+					int32 AtIndex = INDEX_NONE;
+					if (CurrentText.FindLastChar(TEXT('@'), AtIndex))
+					{
+						CurrentText.LeftInline(AtIndex);
+					}
+					ChatInput->SetText(FText::FromString(CurrentText));
+					ChatInput->FocusInput();
 				}
 			}))
 		);

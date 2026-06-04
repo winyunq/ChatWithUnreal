@@ -20,7 +20,6 @@ public:
 public:
 	SLATE_BEGIN_ARGS(SAtAgentMessage) {}
 		SLATE_EVENT(FOnAtAgentMessageClearClicked, OnClearClicked)
-		SLATE_EVENT(FOnAgentSuggestionSelected, OnAgentSelected)
 		SLATE_EVENT(FOnGetAgentAvatar, OnGetAgentAvatar)
 	SLATE_END_ARGS()
 
@@ -33,7 +32,6 @@ public:
 	void CloseSuggestionsMenu();
 
 	FOnAtAgentMessageClearClicked OnClearClickedEvent;
-	FOnAgentSuggestionSelected OnAgentSelectedEvent;
 	FOnGetAgentAvatar OnGetAgentAvatarEvent;
 
 private:
