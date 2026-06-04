@@ -9,7 +9,6 @@
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonReader.h"
 #include "Dom/JsonObject.h"
-#include "HAL/PlatformApplicationMisc.h"
 
 #define LOCTEXT_NAMESPACE "SMcpToolItem"
 
@@ -209,42 +208,17 @@ TSharedRef<SWidget> SMcpToolItem::CreateKeyValueTable(const FString& InJson, boo
 				.ColorAndOpacity(FLinearColor(0.85f, 0.70f, 0.52f))
 			];
 
-			// Value 单元格（柔白色自适应 + Copy 按钮）
+			// Value 单元格（柔白色自适应）
 			GridPanel->AddSlot(1, RowIndex)
 			.Padding(4.0f, 4.0f, 4.0f, 4.0f)
 			.VAlign(VAlign_Top)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				.VAlign(VAlign_Top)
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(Value))
-					.AutoWrapText(true)
-					.WrapTextAt(0.0f)
-					.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
-					.ColorAndOpacity(FLinearColor(0.9f, 0.9f, 0.95f))
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.VAlign(VAlign_Top)
-				.Padding(8.0f, 0.0f, 0.0f, 0.0f)
-				[
-					SNew(SButton)
-					.ButtonStyle(FAppStyle::Get(), "SimpleButton")
-					.ToolTipText(LOCTEXT("CopyValueToolTip", "Copy this value to clipboard"))
-					.OnClicked_Lambda([Value]() -> FReply {
-						FPlatformApplicationMisc::ClipboardCopy(*Value);
-						return FReply::Handled();
-					})
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("CopyBtnLabel", "[Copy]"))
-						.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
-						.ColorAndOpacity(FLinearColor(0.4f, 0.85f, 1.0f))
-					]
-				]
+				SNew(STextBlock)
+				.Text(FText::FromString(Value))
+				.AutoWrapText(true)
+				.WrapTextAt(0.0f)
+				.Font(FAppStyle::Get().GetFontStyle("NormalFont"))
+				.ColorAndOpacity(FLinearColor(0.9f, 0.9f, 0.95f))
 			];
 
 			RowIndex++;

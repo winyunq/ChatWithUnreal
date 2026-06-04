@@ -4,6 +4,7 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
+#include "BottomBar/SAtAgentMessage.h"
 
 namespace
 {
@@ -57,7 +58,19 @@ TSharedRef<SWidget> SAgentAvatar::OnGetMenuContent()
 			FText::GetEmpty(),
 			FSlateIcon(),
 			FUIAction(FExecuteAction::CreateLambda([MentionText]() {
-				// TODO: 插入 @ 到输入框
+				FString CleanAgentName = MentionText;
+				if (CleanAgentName.StartsWith(TEXT("@")))
+				{
+					CleanAgentName.RemoveAt(0, 1);
+				}
+				
+				if (auto AtAgentMsg = SAtAgentMessage::Instance.Pin())
+				{
+					if (AtAgentMsg->OnAgentSelectedEvent.IsBound())
+					{
+						AtAgentMsg->OnAgentSelectedEvent.Execute(CleanAgentName);
+					}
+				}
 			}))
 		);
 	}

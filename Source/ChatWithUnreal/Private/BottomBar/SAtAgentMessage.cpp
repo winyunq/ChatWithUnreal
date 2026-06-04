@@ -1,4 +1,6 @@
 #include "BottomBar/SAtAgentMessage.h"
+#include "TopBar/SAgentAvatar.h"
+#include "BottomBar/SChatInput.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Images/SImage.h"
@@ -47,22 +49,40 @@ void SAtAgentMessage::Construct(const FArguments& InArgs)
 					.AutoWidth()
 					.VAlign(VAlign_Center)
 					[
-						SNew(SBox)
-						.WidthOverride(16.0f)
-						.HeightOverride(16.0f)
+						SNew(SButton)
+						.ButtonStyle(FAppStyle::Get(), "NoBorder")
+						.ContentPadding(0.0f)
+						.OnClicked_Lambda([this]() {
+							if (auto ChatInput = SChatInput::Instance.Pin())
+							{
+								ChatInput->OnAtAgentTriggeredEvent.ExecuteIfBound(TEXT(""));
+							}
+							return FReply::Handled();
+						})
 						[
-							SNew(SImage)
-							.Image_Lambda([this]() { return AgentBrush; })
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(SBox)
+								.WidthOverride(16.0f)
+								.HeightOverride(16.0f)
+								[
+									SNew(SImage)
+									.Image_Lambda([this]() { return AgentBrush; })
+								]
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
+							[
+								SNew(STextBlock)
+								.Text_Lambda([this]() { return FText::FromString(TEXT("@") + AgentName); })
+								.Font(FAppStyle::Get().GetFontStyle("BoldFont"))
+							]
 						]
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
-					[
-						SNew(STextBlock)
-						.Text_Lambda([this]() { return FText::FromString(TEXT("@") + AgentName); })
-						.Font(FAppStyle::Get().GetFontStyle("BoldFont"))
 					]
 					+ SHorizontalBox::Slot()
 					.AutoWidth()
@@ -182,10 +202,6 @@ TSharedRef<ITableRow> SAtAgentMessage::OnGenerateAgentRow(TSharedPtr<FString> It
 		{
 			Brush = OnGetAgentAvatarEvent.Execute(*Item);
 		}
-	}
-	if (!Brush)
-	{
-		Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
 	}
 
 	return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
