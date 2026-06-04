@@ -4,8 +4,10 @@
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
+#include "Widgets/Views/SListView.h"
 
 class SChatInput;
+class SAtAgentMessage;
 class SAbilitiesSelector;
 class SInteractionModeSelector;
 class SToolModeSelector;
@@ -15,9 +17,10 @@ class SAttachmentList;
 
 DECLARE_DELEGATE_OneParam(FOnBottomBarInteractionModeChanged, const FString& /*NewMode*/);
 DECLARE_DELEGATE_OneParam(FOnBottomBarToolModeChanged, const FString& /*NewTool*/);
+DECLARE_DELEGATE_OneParam(FOnBottomBarAtAgentChanged, const FString& /*NewAgent*/);
 
 /**
- * SBottomBar
+ * SBottomBar: 组合各个底栏组件。
  */
 class CHATWITHUNREAL_API SBottomBar : public SCompoundWidget
 {
@@ -36,9 +39,12 @@ public:
 
 	FString GetInteractionMode() const;
 
+
+
 	// 原子微控件
-	TSharedPtr<SAbilitiesSelector> AbilitiesSelector;
+	TSharedPtr<SAtAgentMessage> AtAgentMessage;
 	TSharedPtr<SChatInput> ChatInput;
+	TSharedPtr<SAbilitiesSelector> AbilitiesSelector;
 	TSharedPtr<SInteractionModeSelector> InteractionModeSelector;
 	TSharedPtr<SToolModeSelector> ToolModeSelector;
 	TSharedPtr<SChatSendButton> SendButton;
@@ -52,6 +58,8 @@ private:
 	FReply OnPasteImageFromClipboard();
 	FReply OnAddAttachmentClicked();
 	void OnFilesDropped(const TArray<FString>& Files);
+
+
 
 	FSimpleDelegate OnSendClickedEvent;
 	FSimpleDelegate OnInterruptClickedEvent;

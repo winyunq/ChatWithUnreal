@@ -3,6 +3,7 @@
 #include "SChatWelcome.h"
 #include "MessageInteractionHub/Messages/SAgentResponseGroup.h"
 #include "MessageInteractionHub/Messages/SSystemNotificationWidget.h"
+#include "MessageInteractionHub/Messages/SUserMessageWidget.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
@@ -112,4 +113,23 @@ void SMessageInteractionHub::RemoveMessageWidget(TSharedRef<SWidget> InWidget)
 		MessageList->RemoveSlot(InWidget);
 		RefreshVisibility();
 	}
+}
+
+void SMessageInteractionHub::RestoreHistoryMessage(const FString& AgentName, const FString& Content, const TArray<FString>& Base64Images, bool bIsUser)
+{
+	if (bIsUser)
+	{
+		TSharedRef<SUserMessageWidget> UserMsg = SNew(SUserMessageWidget)
+			.MessageText(Content)
+			.Base64Images(Base64Images);
+		AddMessageWidget(UserMsg);
+	}
+	else
+	{
+		TSharedRef<SAgentResponseGroup> AgentMsg = SNew(SAgentResponseGroup).AgentName(AgentName);
+		AgentMsg->AddTextOutputBlock(Content);
+		AgentMsg->SetAgentStatus(NSLOCTEXT("UmgMcp", "StatusHistory", "History"), false, FLinearColor::Gray);
+		AddMessageWidget(AgentMsg);
+	}
+	RefreshVisibility();
 }

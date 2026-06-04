@@ -4,15 +4,17 @@
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SBoxPanel.h"
 #include "Widgets/Input/SMenuAnchor.h"
 #include "Widgets/Views/SListView.h"
 #include "Widgets/Views/STableRow.h"
-#include "Widgets/Layout/SBorder.h"
-#include "Widgets/Layout/SBox.h"
 #include "Widgets/Images/SImage.h"
-#include "Widgets/SBoxPanel.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Styling/AppStyle.h"
 #include "ChatWithUnrealStyle.h"
-#include "UmgMcpDelegates.h"
+#include "Framework/Text/TextLayout.h"
 
 #include "ImageUtils.h"
 #include "Brushes/SlateDynamicImageBrush.h"
@@ -38,80 +40,20 @@ void SChatInput::Construct(const FArguments& InArgs)
 	Instance = SharedThis(this);
 	bIsUpdatingText = false;
 	LastText = TEXT("");
-	ActiveAtAgent = TEXT("");
 
 	OnSendShortcutTriggeredEvent = InArgs._OnSendShortcutTriggered;
 	OnPasteShortcutTriggeredEvent = InArgs._OnPasteShortcutTriggered;
 	OnFilesDroppedEvent = InArgs._OnFilesDropped;
+	OnAtAgentTriggeredEvent = InArgs._OnAtAgentTriggered;
+	OnBackSpaceOnEmptyEvent = InArgs._OnBackSpaceOnEmpty;
 
 	ChildSlot
 	[
-		SAssignNew(AgentMenuAnchor, SMenuAnchor)
-		.Placement(MenuPlacement_AboveAnchor)
-		.OnGetMenuContent(FOnGetContent::CreateSP(this, &SChatInput::OnGenerateAgentMenu))
-		[
-			SNew(SBorder)
-			.BorderImage(FAppStyle::GetBrush("InputTextBox.Background.Normal"))
-			.Padding(FMargin(4.0f, 2.0f, 4.0f, 2.0f))
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				.Padding(FMargin(4.0f, 0.0f, 4.0f, 0.0f))
-				[
-					SNew(SBorder)
-					.Visibility_Lambda([this]() { return ActiveAtAgent.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible; })
-					.BorderImage(FAppStyle::GetBrush("Menu.Background"))
-					.Padding(FMargin(6.0f, 2.0f, 6.0f, 2.0f))
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						[
-							SNew(SBox)
-							.WidthOverride(16.0f)
-							.HeightOverride(16.0f)
-							[
-								SNew(SImage)
-								.Image_Lambda([this]() -> const FSlateBrush* {
-									const FSlateBrush* Brush = nullptr;
-									if (FUmgMcpDelegates::OnGetAgentAvatar.IsBound())
-									{
-										Brush = FUmgMcpDelegates::OnGetAgentAvatar.Execute(ActiveAtAgent);
-									}
-									if (!Brush)
-									{
-										Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
-									}
-									return Brush;
-								})
-							]
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						.Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
-						[
-							SNew(STextBlock)
-							.Text_Lambda([this]() { return FText::FromString(TEXT("@") + ActiveAtAgent); })
-							.Font(FAppStyle::Get().GetFontStyle("BoldFont"))
-						]
-					]
-				]
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				.VAlign(VAlign_Center)
-				[
-					SAssignNew(InputTextBox, SMultiLineEditableTextBox)
-					.AutoWrapText(true)
-					.HintText(GetLocText(TEXT("Type a message... (Ctrl+Enter to Send)"), TEXT("输入消息... (Ctrl+Enter 发送)")))
-					.OnKeyDownHandler(this, &SChatInput::OnInputKeyDown)
-					.OnTextChanged(this, &SChatInput::HandleTextChanged)
-				]
-			]
-		]
+		SAssignNew(InputTextBox, SMultiLineEditableTextBox)
+		.AutoWrapText(true)
+		.HintText(GetLocText(TEXT("Type a message... (Ctrl+Enter to Send)"), TEXT("输入消息... (Ctrl+Enter 发送)")))
+		.OnKeyDownHandler(this, &SChatInput::OnInputKeyDown)
+		.OnTextChanged(this, &SChatInput::HandleTextChanged)
 	];
 }
 
@@ -125,7 +67,7 @@ FText SChatInput::GetText() const
 
 	for (int32 i = 0; i < RawText.Len(); ++i)
 	{
-		if (RawText[i] == 0x25C6) // Technology Diamond Character ◆
+		if (RawText[i] == 0x25C6) // ◆
 		{
 			ImageCounter++;
 			ResultText += FString::Printf(TEXT("<WinyunqImageBegin>image%d<WinyunqImageEnd>"), ImageCounter);
@@ -177,9 +119,16 @@ void SChatInput::ClearText()
 	}
 }
 
+void SChatInput::FocusInput()
+{
+	if (InputTextBox.IsValid())
+	{
+		FSlateApplication::Get().SetKeyboardFocus(InputTextBox);
+	}
+}
+
 FReply SChatInput::OnInputKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
 {
-	// 发送快捷键：Enter（当未按Shift时）或Ctrl+Enter
 	bool bIsEnter = InKeyEvent.GetKey() == EKeys::Enter;
 	bool bHasCtrl = InKeyEvent.IsControlDown();
 	bool bHasShift = InKeyEvent.IsShiftDown();
@@ -190,7 +139,6 @@ FReply SChatInput::OnInputKeyDown(const FGeometry& MyGeometry, const FKeyEvent& 
 		return FReply::Handled();
 	}
 
-	// 粘贴图片快捷键：Ctrl+V
 	if (bHasCtrl && InKeyEvent.GetKey() == EKeys::V)
 	{
 		if (OnPasteShortcutTriggeredEvent.IsBound())
@@ -203,12 +151,18 @@ FReply SChatInput::OnInputKeyDown(const FGeometry& MyGeometry, const FKeyEvent& 
 		}
 	}
 
-	// 退格键拦截：当输入框为空且存在@智能体时，删除该智能体标签
-	if (InKeyEvent.GetKey() == EKeys::BackSpace && InputTextBox.IsValid() && InputTextBox->GetText().IsEmpty() && !ActiveAtAgent.IsEmpty())
+	// 在输入框开头（消息头）敲击 BackSpace 时触发 OnBackSpaceOnEmpty
+	if (InKeyEvent.GetKey() == EKeys::BackSpace && InputTextBox.IsValid())
 	{
-		ActiveAtAgent.Empty();
-		FUmgMcpDelegates::OnAtAgentChanged.Broadcast(TEXT(""));
-		return FReply::Handled();
+		FTextLocation CursorLoc = InputTextBox->GetCursorLocation();
+		if (InputTextBox->GetText().IsEmpty() || (CursorLoc.GetLineIndex() == 0 && CursorLoc.GetOffset() == 0))
+		{
+			if (OnBackSpaceOnEmptyEvent.IsBound())
+			{
+				OnBackSpaceOnEmptyEvent.Execute();
+				return FReply::Handled();
+			}
+		}
 	}
 
 	return FReply::Unhandled();
@@ -285,44 +239,29 @@ void SChatInput::HandleTextChanged(const FText& NewText)
 
 	FString NewTextStr = NewText.ToString();
 
-	// @ 智能体检测逻辑
+	// 触发 AtAgent 联想检测
 	int32 AtIndex = INDEX_NONE;
 	if (NewTextStr.FindLastChar(TEXT('@'), AtIndex))
 	{
-		// 确保 @ 后面没有空格，且是当前正在输入的过滤词
 		FString FilterText = NewTextStr.Mid(AtIndex + 1);
 		if (!FilterText.Contains(TEXT(" ")))
 		{
-			FilterAgentSuggestions(FilterText);
-			if (AgentSuggestions.Num() > 0 && AgentMenuAnchor.IsValid())
+			if (OnAtAgentTriggeredEvent.IsBound())
 			{
-				AgentMenuAnchor->SetIsOpen(true);
-			}
-			else if (AgentMenuAnchor.IsValid())
-			{
-				AgentMenuAnchor->SetIsOpen(false);
+				OnAtAgentTriggeredEvent.Execute(FilterText);
 			}
 		}
-		else if (AgentMenuAnchor.IsValid())
-		{
-			AgentMenuAnchor->SetIsOpen(false);
-		}
-	}
-	else if (AgentMenuAnchor.IsValid())
-	{
-		AgentMenuAnchor->SetIsOpen(false);
 	}
 
 	TSharedPtr<SAttachmentList> AttList = AttachmentListWidget.Pin();
 	if (AttList.IsValid())
 	{
-		// 1. 分别统计旧文本和新文本中的 ◆ 数量及物理索引位置
 		TArray<int32> OldTokenIndices;
 		TArray<int32> NewTokenIndices;
 
 		for (int32 i = 0; i < LastText.Len(); ++i)
 		{
-			if (LastText[i] == 0x25C6) // ◆
+			if (LastText[i] == 0x25C6)
 			{
 				OldTokenIndices.Add(i);
 			}
@@ -330,7 +269,7 @@ void SChatInput::HandleTextChanged(const FText& NewText)
 
 		for (int32 i = 0; i < NewTextStr.Len(); ++i)
 		{
-			if (NewTextStr[i] == 0x25C6) // ◆
+			if (NewTextStr[i] == 0x25C6)
 			{
 				NewTokenIndices.Add(i);
 			}
@@ -338,7 +277,6 @@ void SChatInput::HandleTextChanged(const FText& NewText)
 
 		const TArray<FAttachmentItem>& Items = AttList->GetAttachmentItems();
 
-		// 2. 如果占位符数量减少了，代表用户通过打字编辑（如 Backspace 等）物理删除了占位符！
 		if (NewTokenIndices.Num() < OldTokenIndices.Num() && Items.Num() > 0)
 		{
 			if (NewTokenIndices.Num() == 0)
@@ -349,7 +287,6 @@ void SChatInput::HandleTextChanged(const FText& NewText)
 			}
 			else
 			{
-				// 用前缀上下文比对算法，精准找出是哪个占位符被干掉了
 				int32 ErasedIndex = -1;
 				for (int32 i = 0; i < NewTokenIndices.Num(); ++i)
 				{
@@ -368,7 +305,6 @@ void SChatInput::HandleTextChanged(const FText& NewText)
 					ErasedIndex = OldTokenIndices.Num() - 1;
 				}
 
-				// 双向联动：反向将对应的图片从附录中剔除销毁，实现完美的闭环状态一致性
 				if (ErasedIndex >= 0 && ErasedIndex < Items.Num())
 				{
 					bIsUpdatingText = true;
@@ -381,97 +317,3 @@ void SChatInput::HandleTextChanged(const FText& NewText)
 
 	LastText = NewTextStr;
 }
-
-TSharedRef<SWidget> SChatInput::OnGenerateAgentMenu()
-{
-	return SNew(SBorder)
-		.BorderImage(FAppStyle::GetBrush("Menu.Background"))
-		.Padding(FMargin(2.0f))
-		[
-			SNew(SBox)
-			.WidthOverride(150.0f)
-			.HeightOverride(120.0f)
-			[
-				SAssignNew(AgentListView, SListView<TSharedPtr<FString>>)
-				.ItemHeight(24.0f)
-				.ListItemsSource(&AgentSuggestions)
-				.OnGenerateRow_Lambda([](TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable) {
-					return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
-						.Padding(FMargin(8.0f, 4.0f))
-						[
-							SNew(STextBlock)
-							.Text(Item.IsValid() ? FText::FromString(*Item) : FText::GetEmpty())
-						];
-				})
-				.OnSelectionChanged_Lambda([this](TSharedPtr<FString> SelectedItem, ESelectInfo::Type SelectInfo) {
-					OnAgentSelected(SelectedItem, SelectInfo);
-				})
-			]
-		];
-}
-
-void SChatInput::FilterAgentSuggestions(const FString& FilterText)
-{
-	AgentSuggestions.Empty();
-	
-	TArray<FString> CandidateNames;
-	if (FUmgMcpDelegates::OnGetAvailableAgents.IsBound())
-	{
-		CandidateNames = FUmgMcpDelegates::OnGetAvailableAgents.Execute();
-	}
-	
-	if (CandidateNames.Num() == 0)
-	{
-		CandidateNames.Add(TEXT("Layout"));
-		CandidateNames.Add(TEXT("Widget"));
-		CandidateNames.Add(TEXT("Master"));
-	}
-
-	for (const FString& Name : CandidateNames)
-	{
-		if (FilterText.IsEmpty() || Name.Contains(FilterText, ESearchCase::IgnoreCase))
-		{
-			AgentSuggestions.Add(MakeShared<FString>(Name));
-		}
-	}
-	
-	if (AgentListView.IsValid())
-	{
-		AgentListView->RequestListRefresh();
-	}
-}
-
-void SChatInput::OnAgentSelected(TSharedPtr<FString> SelectedAgent, ESelectInfo::Type SelectInfo)
-{
-	if (!SelectedAgent.IsValid())
-	{
-		return;
-	}
-
-	if (InputTextBox.IsValid() && AgentMenuAnchor.IsValid())
-	{
-		ActiveAtAgent = *SelectedAgent;
-		AgentMenuAnchor->SetIsOpen(false);
-
-		// 移除用户输入的 @ 符号及其后的部分
-		FString CurrentText = InputTextBox->GetText().ToString();
-		int32 AtIndex = INDEX_NONE;
-		if (CurrentText.FindLastChar(TEXT('@'), AtIndex))
-		{
-			CurrentText.RemoveAt(AtIndex, CurrentText.Len() - AtIndex);
-		}
-
-		bIsUpdatingText = true;
-		InputTextBox->SetText(FText::FromString(CurrentText));
-		LastText = CurrentText;
-		bIsUpdatingText = false;
-
-		// 广播给后端切换 AtAgent
-		FUmgMcpDelegates::OnAtAgentChanged.Broadcast(ActiveAtAgent);
-		
-		// 重新聚焦输入框以防失焦
-		FSlateApplication::Get().SetKeyboardFocus(InputTextBox);
-	}
-}
-
-#undef LOCTEXT_NAMESPACE

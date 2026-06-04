@@ -42,6 +42,7 @@ public:
 	void AddMessageWidget(TSharedRef<SWidget> InWidget);
 	void MoveWidgetToBottom(TSharedRef<SWidget> InWidget);
 	void RemoveMessageWidget(TSharedRef<SWidget> InWidget);
+	void RestoreHistoryMessage(const FString& AgentName, const FString& Content, const TArray<FString>& Base64Images, bool bIsUser);
 
 	TSharedPtr<SChatWelcome> WelcomeWidget;
 	FOnMcpSessionSelected OnSessionSelectedEvent;

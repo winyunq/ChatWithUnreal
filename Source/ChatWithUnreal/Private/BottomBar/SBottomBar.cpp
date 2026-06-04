@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SBottomBar.h"
 #include "SChatInput.h"
+#include "BottomBar/SAtAgentMessage.h"
 #include "SChatSendButton.h"
 #include "SAttachmentList.h"
 #include "SInteractionModeSelector.h"
@@ -11,7 +12,12 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SMenuAnchor.h"
+#include "Widgets/Views/SListView.h"
+#include "Widgets/Views/STableRow.h"
 #include "Styling/AppStyle.h"
+#include "ChatWithUnrealStyle.h"
 #include "Misc/Base64.h"
 #include "Misc/FileHelper.h"
 #include "HAL/PlatformApplicationMisc.h"
@@ -51,7 +57,6 @@ void SBottomBar::Construct(const FArguments& InArgs)
 			.OnAttachmentRemoved_Lambda([this](const FString& ImageId) {
 				if (ChatInput.IsValid() && AttachmentList.IsValid())
 				{
-					// 根据 ID 找到它是列表中的第几个，从而在文本框中删除对应的 ◆
 					const auto& Items = AttachmentList->GetAttachmentItems();
 					int32 TargetIndex = INDEX_NONE;
 					for (int32 i = 0; i < Items.Num(); ++i)
@@ -75,10 +80,27 @@ void SBottomBar::Construct(const FArguments& InArgs)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
-			SAssignNew(ChatInput, SChatInput)
-			.OnSendShortcutTriggered(FSimpleDelegate::CreateSP(this, &SBottomBar::OnChatInputSendRequested))
-			.OnPasteShortcutTriggered(FOnPasteShortcutTriggered::CreateSP(this, &SBottomBar::OnPasteImageFromClipboard))
-			.OnFilesDropped(FOnFilesDropped::CreateSP(this, &SBottomBar::OnFilesDropped))
+			SNew(SBorder)
+			.Padding(FMargin(4.0f, 2.0f, 4.0f, 2.0f))
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(4.0f, 0.0f, 4.0f, 0.0f))
+				[
+					SAssignNew(AtAgentMessage, SAtAgentMessage)
+				]
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				.VAlign(VAlign_Center)
+				[
+					SAssignNew(ChatInput, SChatInput)
+					.OnSendShortcutTriggered(FSimpleDelegate::CreateSP(this, &SBottomBar::OnChatInputSendRequested))
+					.OnPasteShortcutTriggered(FOnPasteShortcutTriggered::CreateSP(this, &SBottomBar::OnPasteImageFromClipboard))
+					.OnFilesDropped(FOnFilesDropped::CreateSP(this, &SBottomBar::OnFilesDropped))
+				]
+			]
 		]
 
 		// 2. 控制工具条 (原子控件拼装)
@@ -130,6 +152,7 @@ void SBottomBar::Construct(const FArguments& InArgs)
 			]
 			+ SHorizontalBox::Slot()
 			.AutoWidth()
+			.VAlign(VAlign_Center)
 			[
 				SAssignNew(SendButton, SChatSendButton)
 				.OnSendClicked(FSimpleDelegate::CreateSP(this, &SBottomBar::OnChatInputSendRequested))
