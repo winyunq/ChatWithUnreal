@@ -35,6 +35,8 @@ public:
 
 	void SetAttachmentList(TSharedPtr<class SAttachmentList> InList);
 
+	FString GetActiveAtAgent() const { return ActiveAtAgent; }
+
 public:
 	virtual FReply OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
 	virtual FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
@@ -48,6 +50,15 @@ private:
 	bool bIsUpdatingText = false;
 
 	TWeakPtr<class SAttachmentList> AttachmentListWidget;
+
+	TSharedPtr<class SMenuAnchor> AgentMenuAnchor;
+	TSharedPtr<class SListView<TSharedPtr<FString>>> AgentListView;
+	TArray<TSharedPtr<FString>> AgentSuggestions;
+	FString ActiveAtAgent;
+
+	TSharedRef<class SWidget> OnGenerateAgentMenu();
+	void FilterAgentSuggestions(const FString& FilterText);
+	void OnAgentSelected(TSharedPtr<FString> SelectedAgent, ESelectInfo::Type SelectInfo);
 
 	FSimpleDelegate OnSendShortcutTriggeredEvent;
 	FOnPasteShortcutTriggered OnPasteShortcutTriggeredEvent;
