@@ -87,7 +87,6 @@ void SBottomBar::Construct(const FArguments& InArgs)
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
 				.VAlign(VAlign_Center)
-				.Padding(FMargin(4.0f, 0.0f, 4.0f, 0.0f))
 				[
 					SAssignNew(AtAgentMessage, SAtAgentMessage)
 				]

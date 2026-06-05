@@ -25,7 +25,6 @@ public:
 		SLATE_EVENT(FOnPasteShortcutTriggered, OnPasteShortcutTriggered)
 		SLATE_EVENT(FOnFilesDropped, OnFilesDropped)
 		SLATE_EVENT(FOnAtAgentTriggered, OnAtAgentTriggered)
-		SLATE_EVENT(FSimpleDelegate, OnBackSpaceOnEmpty)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -40,7 +39,6 @@ public:
 
 	void SetAttachmentList(TSharedPtr<class SAttachmentList> InList);
 
-public:
 	virtual FReply OnDragOver(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
 	virtual FReply OnDrop(const FGeometry& MyGeometry, const FDragDropEvent& DragDropEvent) override;
 
@@ -48,7 +46,6 @@ public:
 	FOnPasteShortcutTriggered OnPasteShortcutTriggeredEvent;
 	FOnFilesDropped OnFilesDroppedEvent;
 	FOnAtAgentTriggered OnAtAgentTriggeredEvent;
-	FSimpleDelegate OnBackSpaceOnEmptyEvent;
 
 private:
 	FReply OnInputKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent);

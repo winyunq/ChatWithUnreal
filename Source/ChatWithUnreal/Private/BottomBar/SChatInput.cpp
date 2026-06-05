@@ -1,6 +1,7 @@
 // Copyright (c) 2025-2026 Winyunq. All rights reserved.
 #include "SChatInput.h"
 #include "SAttachmentList.h"
+#include "BottomBar/SAtAgentMessage.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
@@ -45,7 +46,6 @@ void SChatInput::Construct(const FArguments& InArgs)
 	OnPasteShortcutTriggeredEvent = InArgs._OnPasteShortcutTriggered;
 	OnFilesDroppedEvent = InArgs._OnFilesDropped;
 	OnAtAgentTriggeredEvent = InArgs._OnAtAgentTriggered;
-	OnBackSpaceOnEmptyEvent = InArgs._OnBackSpaceOnEmpty;
 
 	ChildSlot
 	[
@@ -151,15 +151,15 @@ FReply SChatInput::OnInputKeyDown(const FGeometry& MyGeometry, const FKeyEvent& 
 		}
 	}
 
-	// 在输入框开头（消息头）敲击 BackSpace 时触发 OnBackSpaceOnEmpty
+	// 在输入框开头（消息头）敲击 BackSpace 时直接清除 @agent 状态
 	if (InKeyEvent.GetKey() == EKeys::BackSpace && InputTextBox.IsValid())
 	{
 		FTextLocation CursorLoc = InputTextBox->GetCursorLocation();
 		if (InputTextBox->GetText().IsEmpty() || (CursorLoc.GetLineIndex() == 0 && CursorLoc.GetOffset() == 0))
 		{
-			if (OnBackSpaceOnEmptyEvent.IsBound())
+			if (auto AtAgentMsg = SAtAgentMessage::Instance.Pin())
 			{
-				OnBackSpaceOnEmptyEvent.Execute();
+				AtAgentMsg->UpdateAgent(TEXT(""), nullptr);
 				return FReply::Handled();
 			}
 		}

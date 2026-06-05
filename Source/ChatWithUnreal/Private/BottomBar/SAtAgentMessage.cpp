@@ -18,72 +18,81 @@ TWeakPtr<SAtAgentMessage> SAtAgentMessage::Instance = nullptr;
 void SAtAgentMessage::Construct(const FArguments& InArgs)
 {
 	Instance = SharedThis(this);
-	OnClearClickedEvent = InArgs._OnClearClicked;
-	OnGetAgentAvatarEvent = InArgs._OnGetAgentAvatar;
-	
-	// 初始状态默认为折叠
-	SetVisibility(EVisibility::Collapsed);
 
 	ChildSlot
 	[
-		SAssignNew(AgentMenuAnchor, SMenuAnchor)
-		.Placement(MenuPlacement_AboveAnchor)
-		.OnGetMenuContent(this, &SAtAgentMessage::OnGenerateAgentMenu)
-		.OnMenuOpenChanged_Lambda([this](bool bIsOpen) {
-			if (!bIsOpen)
-			{
-				SetVisibility(AgentName.IsEmpty() ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible);
-			}
-		})
+		SNew(SHorizontalBox)
+		
+		// 左边：不占任何宽高的菜单定位锚点
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		[
+			SAssignNew(AgentMenuAnchor, SMenuAnchor)
+			.Placement(MenuPlacement_AboveAnchor)
+			.OnGetMenuContent(this, &SAtAgentMessage::OnGenerateAgentMenu)
+			[
+				SNew(SSpacer)
+				.Size(FVector2D(0.0f, 0.0f))
+			]
+		]
+
+		// 右边：只在选中智能体时展现的气泡标志框
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
 		[
 			SNew(SBox)
-			.Visibility_Lambda([this]() { return AgentName.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible; })
+			.Visibility(this, &SAtAgentMessage::GetAgentBoxVisibility)
 			[
 				SNew(SBorder)
-				.BorderImage(FAppStyle::GetBrush("Menu.Background"))
-				.Padding(FMargin(6.0f, 2.0f, 6.0f, 2.0f))
+				.BorderImage(FAppStyle::GetBrush("NoBorder"))
+				.Padding(FMargin(0.0f, 0.0f, 4.0f, 0.0f)) // 仅在右侧预留 4px 间隙给输入框
 				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
+					SNew(SBorder)
+					.BorderImage(FAppStyle::GetBrush("Menu.Background"))
+					.Padding(FMargin(6.0f, 2.0f, 6.0f, 2.0f))
 					[
-						SNew(SBox)
-						.WidthOverride(16.0f)
-						.HeightOverride(16.0f)
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
 						[
-							SNew(SImage)
-							.Image_Lambda([this]() { return AgentBrush; })
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
-					[
-						SNew(STextBlock)
-						.Text_Lambda([this]() { return FText::FromString(TEXT("@") + AgentName); })
-						.Font(FAppStyle::Get().GetFontStyle("BoldFont"))
-					]
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(6.0f, 0.0f, 0.0f, 0.0f))
-					[
-						SNew(SButton)
-						.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
-						.ContentPadding(0.0f)
-						.OnClicked(this, &SAtAgentMessage::OnClearBtnClicked)
-						[
-							SNew(SBorder)
-							.BorderImage(FAppStyle::GetBrush("Menu.Background"))
-							.BorderBackgroundColor(FLinearColor(0.2f, 0.2f, 0.2f, 0.8f))
-							.Padding(FMargin(5.0f, 3.0f, 5.0f, 4.0f))
+							SNew(SBox)
+							.WidthOverride(16.0f)
+							.HeightOverride(16.0f)
 							[
-								SNew(STextBlock)
-								.Text(FText::FromString(TEXT("×")))
-								.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
-								.ColorAndOpacity(FLinearColor(0.75f, 0.75f, 0.75f, 1.0f))
+								SNew(SImage)
+								.Image(this, &SAtAgentMessage::GetAgentBrush)
+							]
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
+						[
+							SNew(STextBlock)
+							.Text(this, &SAtAgentMessage::GetAgentText)
+							.Font(FAppStyle::Get().GetFontStyle("BoldFont"))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(6.0f, 0.0f, 0.0f, 0.0f))
+						[
+							SNew(SButton)
+							.ButtonStyle(FAppStyle::Get(), "HoverHintOnly")
+							.ContentPadding(0.0f)
+							.OnClicked(this, &SAtAgentMessage::OnClearBtnClicked)
+							[
+								SNew(SBorder)
+								.BorderImage(FAppStyle::GetBrush("Menu.Background"))
+								.BorderBackgroundColor(FLinearColor(0.2f, 0.2f, 0.2f, 0.8f))
+								.Padding(FMargin(5.0f, 3.0f, 5.0f, 4.0f))
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(TEXT("×")))
+									.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
+									.ColorAndOpacity(FLinearColor(0.75f, 0.75f, 0.75f, 1.0f))
+								]
 							]
 						]
 					]
@@ -110,8 +119,6 @@ void SAtAgentMessage::UpdateAgent(const FString& InAgentName, const struct FSlat
 		AgentName.Empty();
 		AgentBrush = nullptr;
 	}
-
-	SetVisibility(AgentName.IsEmpty() ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible);
 }
 
 void SAtAgentMessage::ShowSuggestionsMenu(const TArray<FString>& InSuggestions)
@@ -129,28 +136,26 @@ void SAtAgentMessage::ShowSuggestionsMenu(const TArray<FString>& InSuggestions)
 
 	if (AgentSuggestions.Num() > 0 && AgentMenuAnchor.IsValid())
 	{
-		SetVisibility(EVisibility::SelfHitTestInvisible);
 		AgentMenuAnchor->SetIsOpen(true);
 	}
 	else if (AgentMenuAnchor.IsValid())
 	{
 		AgentMenuAnchor->SetIsOpen(false);
-		SetVisibility(AgentName.IsEmpty() ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible);
 	}
 }
 
 void SAtAgentMessage::CloseSuggestionsMenu()
 {
+	AgentSuggestions.Empty();
 	if (AgentMenuAnchor.IsValid())
 	{
 		AgentMenuAnchor->SetIsOpen(false);
 	}
-	SetVisibility(AgentName.IsEmpty() ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible);
 }
 
 FReply SAtAgentMessage::OnClearBtnClicked()
 {
-	OnClearClickedEvent.ExecuteIfBound();
+	UpdateAgent(TEXT(""), nullptr);
 	return FReply::Handled();
 }
 
@@ -175,13 +180,13 @@ TSharedRef<SWidget> SAtAgentMessage::OnGenerateAgentMenu()
 
 TSharedRef<ITableRow> SAtAgentMessage::OnGenerateAgentRow(TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable)
 {
-	// 动态去后端拉取头像，我们这里可以通过 OnGetAgentAvatarEvent 拿到对应 Avatar
 	const FSlateBrush* Brush = nullptr;
 	if (Item.IsValid())
 	{
-		if (OnGetAgentAvatarEvent.IsBound())
+		Brush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + *Item)), nullptr, nullptr);
+		if (!Brush)
 		{
-			Brush = OnGetAgentAvatarEvent.Execute(*Item);
+			Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
 		}
 	}
 
@@ -224,18 +229,10 @@ void SAtAgentMessage::OnAgentSelected(TSharedPtr<FString> SelectedAgent, ESelect
 		AgentMenuAnchor->SetIsOpen(false);
 	}
 
-	const FSlateBrush* Brush = nullptr;
-	if (OnGetAgentAvatarEvent.IsBound())
+	const FSlateBrush* Brush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + *SelectedAgent)), nullptr, nullptr);
+	if (!Brush)
 	{
-		Brush = OnGetAgentAvatarEvent.Execute(*SelectedAgent);
-	}
-	else
-	{
-		Brush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + *SelectedAgent)), nullptr, nullptr);
-		if (!Brush)
-		{
-			Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
-		}
+		Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
 	}
 
 	UpdateAgent(*SelectedAgent, Brush);
@@ -251,4 +248,19 @@ void SAtAgentMessage::OnAgentSelected(TSharedPtr<FString> SelectedAgent, ESelect
 		ChatInput->SetText(FText::FromString(CurrentText));
 		ChatInput->FocusInput();
 	}
+}
+
+EVisibility SAtAgentMessage::GetAgentBoxVisibility() const
+{
+	return AgentName.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible;
+}
+
+const FSlateBrush* SAtAgentMessage::GetAgentBrush() const
+{
+	return AgentBrush;
+}
+
+FText SAtAgentMessage::GetAgentText() const
+{
+	return FText::FromString(TEXT("@") + AgentName);
 }

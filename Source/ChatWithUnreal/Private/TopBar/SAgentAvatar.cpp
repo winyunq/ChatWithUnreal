@@ -49,18 +49,10 @@ TSharedRef<SWidget> SAgentAvatar::OnGetMenuContent()
 				
 				if (auto AtAgentMsg = SAtAgentMessage::Instance.Pin())
 				{
-					const FSlateBrush* Brush = nullptr;
-					if (AtAgentMsg->OnGetAgentAvatarEvent.IsBound())
+					const FSlateBrush* Brush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + CleanAgentName)), nullptr, nullptr);
+					if (!Brush)
 					{
-						Brush = AtAgentMsg->OnGetAgentAvatarEvent.Execute(CleanAgentName);
-					}
-					else
-					{
-						Brush = FChatWithUnrealStyle::Get().GetOptionalBrush(FName(*(TEXT("ChatWithUnreal.Agent.") + CleanAgentName)), nullptr, nullptr);
-						if (!Brush)
-						{
-							Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
-						}
+						Brush = FChatWithUnrealStyle::Get().GetBrush("ChatWithUnreal.Agent.Agent");
 					}
 					AtAgentMsg->UpdateAgent(CleanAgentName, Brush);
 				}
